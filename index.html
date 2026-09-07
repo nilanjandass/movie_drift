@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Movie Drift</title>
+    <link rel="preconnect" href="https://image.tmdb.org" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+
+    <header class="topbar">
+      <a class="brand" href="#/">
+        <span class="brand-mark">MD</span>
+        <span>Movie Drift</span>
+      </a>
+      <nav class="nav-actions" aria-label="Primary navigation">
+        <a href="#/" class="nav-link" data-route-link="home">Discover</a>
+        <a href="#/watchlist" class="nav-link" data-route-link="watchlist">Watchlist</a>
+        <button class="icon-button" id="settingsButton" aria-label="API settings" title="API settings">
+          <span aria-hidden="true">⚙</span>
+        </button>
+      </nav>
+    </header>
+
+    <main id="app" class="app-shell"></main>
+
+    <dialog class="quick-look-dialog" id="quickLookDialog" aria-labelledby="quickLookTitle">
+      <div class="quick-look-content" id="quickLookContent"></div>
+    </dialog>
+
+    <footer class="site-footer">
+      Movie data is provided by TMDb. This product uses the TMDb API but is not endorsed or certified by TMDb.
+    </footer>
+    <div class="developer-ribbon">Developed by Nilanjan Das</div>
+
+    <dialog class="glass-dialog" id="settingsDialog">
+      <form method="dialog" class="settings-form">
+        <div>
+          <p class="eyebrow">TMDb Connection</p>
+          <h2>Use live movie data</h2>
+          <p class="muted">
+            Add a TMDb API key to fetch current releases, posters, credits, and metadata.
+            The key is stored only in this browser.
+          </p>
+        </div>
+        <label class="field">
+          <span>TMDb API Key</span>
+          <input id="apiKeyInput" type="password" autocomplete="off" placeholder="Paste your API key" />
+        </label>
+        <div class="preferences-grid">
+          <label class="field">
+            <span>Streaming region</span>
+            <input id="regionPreference" type="text" value="India" disabled />
+          </label>
+          <label class="field">
+            <span>Default language</span>
+            <select id="prefLanguageSelect"></select>
+          </label>
+          <label class="field">
+            <span>Default min rating</span>
+            <input id="prefRatingInput" type="number" min="0" max="10" step="0.5" placeholder="Any" />
+          </label>
+          <label class="field">
+            <span>Default sort</span>
+            <select id="prefSortSelect"></select>
+          </label>
+        </div>
+        <div class="dialog-actions">
+          <button class="ghost-button" value="cancel">Cancel</button>
+          <button class="primary-button" id="saveApiKeyButton" value="default">Save key</button>
+        </div>
+      </form>
+    </dialog>
+
+    <template id="movieCardTemplate">
+      <article class="movie-card">
+        <div class="poster-stage">
+          <button class="poster-button">
+            <img class="poster" alt="" loading="lazy" />
+          </button>
+          <div class="card-score" aria-label="Rating"><span class="score-value"></span></div>
+        </div>
+        <div class="movie-card-body">
+          <div class="card-title-row">
+            <button class="text-link movie-title"></button>
+            <button class="watch-toggle" aria-label="Toggle watchlist" title="Toggle watchlist">＋</button>
+          </div>
+          <div class="movie-meta"></div>
+          <p class="movie-overview"></p>
+        </div>
+      </article>
+    </template>
+
+    <script src="ui-model.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
