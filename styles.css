@@ -481,7 +481,6 @@ h3 {
 }
 
 .feature-actions,
-.mood-rail,
 .film-rail {
   display: flex;
   align-items: center;
@@ -489,13 +488,6 @@ h3 {
 }
 
 .feature-actions { flex-wrap: wrap; }
-
-.mood-rail {
-  margin-top: 16px;
-  overflow-x: auto;
-  padding: 4px 2px 8px;
-  scrollbar-width: thin;
-}
 
 .rail-shell { position: relative; }
 .rail-shell .film-rail { scrollbar-width: none; }
@@ -529,7 +521,6 @@ h3 {
 .feature-dots button { width: 12px; height: 12px; padding: 0; }
 .feature-dots button.is-active { border-color: var(--accent); background: var(--accent); }
 
-.mood-more { margin-top: 2px; }
 .availability-filter { display: inline-flex; min-height: 42px; align-items: center; gap: 9px; padding: 0 10px; border: 1px solid rgba(255,255,255,.16); border-radius: 7px; color: var(--text); background: rgba(0,0,0,.2); font-size: 13px; font-weight: 800; }
 .availability-filter input { width: 16px; height: 16px; accent-color: var(--accent); }
 
@@ -547,26 +538,6 @@ h3 {
 .video-note { margin: 12px 0 0; font-size: 13px; }
 
 .developer-ribbon { position: fixed; right: 0; bottom: 0; left: 0; z-index: 40; min-height: 34px; padding: 8px 18px; border-top: 1px solid rgba(255,255,255,.18); color: rgba(247,248,255,.9); background: rgba(7, 10, 18, .56); box-shadow: 0 -12px 30px rgba(0,0,0,.16); backdrop-filter: blur(15px); font-size: 12px; font-weight: 800; letter-spacing: .04em; text-align: center; pointer-events: none; }
-
-.mood-chip {
-  flex: 0 0 auto;
-  min-height: 38px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 999px;
-  padding: 0 13px;
-  color: var(--text);
-  background: rgba(6, 10, 18, 0.45);
-  cursor: pointer;
-  font-weight: 800;
-  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
-}
-
-.mood-chip:hover,
-.mood-chip.is-active {
-  border-color: rgba(97, 229, 196, 0.68);
-  background: rgba(97, 229, 196, 0.16);
-  transform: translateY(-1px);
-}
 
 .program-section { margin-top: 28px; }
 

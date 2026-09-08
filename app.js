@@ -226,7 +226,6 @@ const state = {
   featureSlides: [],
   featuredIndex: 0,
   featureTimer: null,
-  generatedMoods: [],
   watchlist: readWatchlist(),
 };
 
@@ -345,10 +344,6 @@ async function renderHome() {
       <div id="searchSuggestions" class="suggestions is-hidden"></div>
     </section>
     <section class="program-section is-hidden" id="discoveryRails"></section>
-    <section class="program-section mood-program">
-      <div class="section-heading"><h2>Pick by mood</h2><span>Filters chronological discovery</span></div>
-      <div class="mood-rail" id="moodRail"></div><button class="ghost-button mood-more" id="moreMoodButton" type="button">New moods</button>
-    </section>
     <section>
       <div class="toolbar">
         <h2>${state.filters.query ? "Search results" : "Chronological discovery"}</h2>
@@ -365,7 +360,6 @@ async function renderHome() {
 
   wireSearch();
   wireFilters();
-  wireMoodRail();
   await loadGenres();
   updateGenreFilter();
   await refreshHome();
@@ -703,63 +697,6 @@ function paintFeaturedSlide() {
 function moveFeaturedSlide(direction) {
   state.featuredIndex = nextCarouselIndex(state.featuredIndex, direction, state.featureSlides.length);
   paintFeaturedSlide();
-}
-
-function wireMoodRail() {
-  const target = document.querySelector("#moodRail");
-  if (!target) return;
-  const coreMoods = ["All picks"];
-  if (!state.generatedMoods.length) state.generatedMoods = randomMoodOptions(coreMoods, null, 5);
-  const moods = [...coreMoods, ...state.generatedMoods];
-  target.innerHTML = moods.map((mood, index) => `<button class="mood-chip ${index === 0 ? "is-active" : ""}" type="button" data-mood="${mood}">${mood}</button>`).join("");
-  target.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-mood]");
-    if (!button) return;
-    target.querySelectorAll(".mood-chip").forEach((chip) => chip.classList.toggle("is-active", chip === button));
-    renderChronologicalMood(button.dataset.mood);
-  });
-  document.querySelector("#moreMoodButton")?.addEventListener("click", () => {
-    state.generatedMoods = randomMoodOptions(coreMoods, null, 5);
-    wireMoodRail();
-  });
-}
-
-function renderChronologicalMood(mood) {
-  const grid = document.querySelector("#movieGrid");
-  if (!grid) return;
-  const movies = filterByMood(state.movies, mood);
-  grid.innerHTML = "";
-  if (!movies.length) {
-    grid.innerHTML = `<div class="empty-state"><div><h2>No movies match this mood.</h2><p class="muted">Try a new set of moods or return to all picks.</p></div></div>`;
-    return;
-  }
-  renderMovieBatch(movies, grid);
-}
-
-function filterByMood(movies, mood) {
-  if (!mood || mood === "All picks") return movies;
-  const extras = {
-    "Date night": (movie) => moodLabels(movie, state.genres).includes("Feel-good"),
-    "Weekend adventure": (movie) => (movie.genre_ids || []).some((id) => [28, 12, 878].includes(id)),
-    "Hidden gem": (movie) => Number(movie.vote_average || 0) >= 7 && Number(movie.popularity || 0) < 50,
-    "Late night": (movie) => moodLabels(movie, state.genres).some((label) => ["Edge of your seat", "Mind-bending"].includes(label)),
-    "Under two hours": (movie) => Number(movie.runtime || 110) < 120,
-    "International pick": (movie) => movie.original_language && movie.original_language !== "en",
-  };
-  if (extras[mood]) return movies.filter(extras[mood]);
-  if (moodReserve.includes(mood)) return movies.filter((movie) => matchesGeneratedMood(movie, mood));
-  return movies.filter((movie) => moodLabels(movie, state.genres).includes(mood));
-}
-
-function matchesGeneratedMood(movie, mood) {
-  const label = mood.toLowerCase();
-  if (label.includes("romance")) return (movie.genre_ids || []).includes(10749);
-  if (label.includes("adventure")) return (movie.genre_ids || []).some((id) => [28, 12, 878].includes(id));
-  if (label.includes("mystery") || label.includes("thrill")) return moodLabels(movie, state.genres).some((tag) => ["Mind-bending", "Edge of your seat"].includes(tag));
-  if (label.includes("laugh")) return (movie.genre_ids || []).includes(35);
-  if (label.includes("cry")) return (movie.genre_ids || []).includes(18);
-  if (label.includes("dream")) return (movie.genre_ids || []).some((id) => [878, 16].includes(id));
-  return Number(movie.popularity || 0) > 0;
 }
 
 function renderDiscoveryRails(movies) {
