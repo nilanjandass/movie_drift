@@ -226,6 +226,7 @@ const state = {
   featureSlides: [],
   featuredIndex: 0,
   featureTimer: null,
+  featureGestureAbort: null,
   filterAbort: null,
   watchlist: readWatchlist(),
 };
@@ -683,9 +684,9 @@ function renderSkeletons(count = 6) {
 function renderFeaturedSpotlight(movies) {
   state.featureSlides = featuredSlidesByGenre(movies);
   state.featuredIndex = 0;
-  clearInterval(state.featureTimer);
   paintFeaturedSlide();
-  state.featureTimer = setInterval(() => moveFeaturedSlide(1), 10000);
+  wireFeaturedSwipe();
+  restartFeaturedTimer();
 }
 
 function featuredSlidesByGenre(movies) {
@@ -719,12 +720,65 @@ function paintFeaturedSlide() {
   `;
   document.querySelector("#featureDetailsButton").addEventListener("click", () => { window.location.hash = `#/movie/${movie.id}`; });
   document.querySelector("#featureQuickLookButton").addEventListener("click", () => showQuickLook(movie));
-  target.querySelectorAll("[data-slide-to]").forEach((button) => button.addEventListener("click", () => { state.featuredIndex = Number(button.dataset.slideTo); paintFeaturedSlide(); }));
+  target.querySelectorAll("[data-slide-to]").forEach((button) => button.addEventListener("click", () => {
+    state.featuredIndex = Number(button.dataset.slideTo);
+    paintFeaturedSlide();
+    restartFeaturedTimer();
+  }));
 }
 
 function moveFeaturedSlide(direction) {
   state.featuredIndex = nextCarouselIndex(state.featuredIndex, direction, state.featureSlides.length);
   paintFeaturedSlide();
+}
+
+function restartFeaturedTimer() {
+  clearInterval(state.featureTimer);
+  if (state.featureSlides.length > 1) state.featureTimer = setInterval(() => moveFeaturedSlide(1), 10000);
+}
+
+function wireFeaturedSwipe() {
+  const target = document.querySelector("#featuredSpotlight");
+  if (!target) return;
+
+  state.featureGestureAbort?.abort();
+  state.featureGestureAbort = new AbortController();
+  const { signal } = state.featureGestureAbort;
+  let gesture = null;
+
+  const resetGesture = () => {
+    gesture = null;
+    target.classList.remove("is-swiping");
+  };
+
+  target.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || event.target.closest("button, a, input, select")) return;
+    gesture = { pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+    target.setPointerCapture?.(event.pointerId);
+  }, { signal });
+
+  target.addEventListener("pointermove", (event) => {
+    if (!gesture || event.pointerId !== gesture.pointerId) return;
+    const deltaX = event.clientX - gesture.x;
+    const deltaY = event.clientY - gesture.y;
+    if (Math.abs(deltaX) > 12 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      target.classList.add("is-swiping");
+      event.preventDefault();
+    }
+  }, { signal });
+
+  target.addEventListener("pointerup", (event) => {
+    if (!gesture || event.pointerId !== gesture.pointerId) return;
+    const deltaX = event.clientX - gesture.x;
+    const deltaY = event.clientY - gesture.y;
+    const direction = Math.abs(deltaX) > Math.abs(deltaY) ? swipeDirection(gesture.x, event.clientX) : 0;
+    resetGesture();
+    if (!direction) return;
+    moveFeaturedSlide(direction);
+    restartFeaturedTimer();
+  }, { signal });
+
+  target.addEventListener("pointercancel", resetGesture, { signal });
 }
 
 function renderDiscoveryRails(movies) {

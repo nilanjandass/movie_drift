@@ -445,7 +445,11 @@ h3 {
   background: #0a111b;
   box-shadow: var(--shadow);
   isolation: isolate;
+  cursor: grab;
+  touch-action: pan-y;
 }
+
+.cinema-stage.is-swiping { cursor: grabbing; }
 
 .cinema-stage::before {
   position: absolute;

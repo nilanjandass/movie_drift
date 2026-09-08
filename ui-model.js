@@ -28,9 +28,15 @@ function nextCarouselIndex(current, direction, total) {
   return (current + direction + total) % total;
 }
 
+function swipeDirection(startX, endX, threshold = 48) {
+  const distance = endX - startX;
+  if (Math.abs(distance) < threshold) return 0;
+  return distance < 0 ? 1 : -1;
+}
+
 function hasIndiaAvailability(movie = {}) {
   const providers = movie["watch/providers"]?.results?.IN;
   return Boolean(providers && [providers.flatrate, providers.free, providers.ads, providers.rent, providers.buy].some((list) => list?.length));
 }
 
-if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, hasIndiaAvailability };
+if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, hasIndiaAvailability };
