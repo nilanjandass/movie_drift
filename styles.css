@@ -366,14 +366,27 @@ h3 {
   color: var(--muted);
 }
 
+.discovery-section { position: relative; }
+
+.filter-popover {
+  position: absolute;
+  top: 68px;
+  right: 0;
+  z-index: 35;
+  width: min(100%, 980px);
+  padding: 14px;
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius);
+  background: rgba(17, 20, 31, 0.9);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(22px);
+}
+
 .filters {
   display: grid;
   grid-template-columns: repeat(6, minmax(120px, 1fr)) auto;
   gap: 12px;
   align-items: end;
-  margin-bottom: 18px;
-  padding: 14px;
-  border-radius: var(--radius);
 }
 
 .field {
@@ -1055,6 +1068,16 @@ h3 {
 
   .filters {
     grid-template-columns: 1fr;
+  }
+
+  .filter-popover {
+    position: fixed;
+    top: 96px;
+    right: 14px;
+    left: 14px;
+    width: auto;
+    max-height: calc(100dvh - 150px);
+    overflow-y: auto;
   }
 
   .movie-grid {

@@ -226,6 +226,7 @@ const state = {
   featureSlides: [],
   featuredIndex: 0,
   featureTimer: null,
+  filterAbort: null,
   watchlist: readWatchlist(),
 };
 
@@ -344,14 +345,16 @@ async function renderHome() {
       <div id="searchSuggestions" class="suggestions is-hidden"></div>
     </section>
     <section class="program-section is-hidden" id="discoveryRails"></section>
-    <section>
+    <section class="discovery-section">
       <div class="toolbar">
         <h2>${state.filters.query ? "Search results" : "Chronological discovery"}</h2>
-        <button class="filter-toggle" id="filterToggle">Filters</button>
+        <button class="filter-toggle" id="filterToggle" type="button" aria-expanded="false" aria-controls="filterPopover">Filters</button>
       </div>
-      <form class="filters" id="filtersForm">
-        ${renderFilters()}
-      </form>
+      <div class="filter-popover is-hidden" id="filterPopover">
+        <form class="filters" id="filtersForm" aria-label="Discovery filters">
+          ${renderFilters()}
+        </form>
+      </div>
       <div class="movie-grid" id="movieGrid"></div>
       <div class="loader" id="loader">Loading movies...</div>
       <div class="sentinel" id="sentinel"></div>
@@ -463,9 +466,21 @@ async function fetchSearchSuggestions(query) {
 function wireFilters() {
   const form = document.querySelector("#filtersForm");
   const toggle = document.querySelector("#filterToggle");
+  const popover = document.querySelector("#filterPopover");
   const clear = document.querySelector("#clearFilters");
+  if (!form || !toggle || !popover || !clear) return;
 
-  toggle.addEventListener("click", () => form.classList.toggle("is-hidden"));
+  state.filterAbort?.abort();
+  state.filterAbort = new AbortController();
+  const { signal } = state.filterAbort;
+
+  const setPopoverOpen = (isOpen) => {
+    popover.classList.toggle("is-hidden", !isOpen);
+    toggle.setAttribute("aria-expanded", String(isOpen));
+    if (isOpen) popover.querySelector("select, input")?.focus();
+  };
+
+  toggle.addEventListener("click", () => setPopoverOpen(popover.classList.contains("is-hidden")), { signal });
   form.addEventListener("input", debounce(() => {
     const data = new FormData(form);
     state.filters = {
@@ -480,15 +495,28 @@ function wireFilters() {
     };
     savePreferencesFromFilters();
     refreshHome();
-  }, 250));
+  }, 250), { signal });
 
   clear.addEventListener("click", () => {
     state.filters = { language: "", genre: "", fromYear: "", toYear: "", minRating: "", sortBy: "primary_release_date.desc", query: state.filters.query, indiaAvailable: false };
     savePreferencesFromFilters();
-    form.innerHTML = renderFilters();
-    wireFilters();
+    form.elements.language.value = "";
+    form.elements.genre.value = "";
+    form.elements.fromYear.value = "";
+    form.elements.toYear.value = "";
+    form.elements.minRating.value = "";
+    form.elements.sortBy.value = "primary_release_date.desc";
+    form.elements.indiaAvailable.checked = false;
     refreshHome();
-  });
+  }, { signal });
+
+  document.addEventListener("click", (event) => {
+    if (!popover.classList.contains("is-hidden") && !popover.contains(event.target) && !toggle.contains(event.target)) setPopoverOpen(false);
+  }, { signal });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") setPopoverOpen(false);
+  }, { signal });
 }
 
 function updateGenreFilter() {
