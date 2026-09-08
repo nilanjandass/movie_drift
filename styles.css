@@ -1005,7 +1005,10 @@ h3 {
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 16px;
   margin-top: 16px;
+  align-items: start;
 }
+
+.details-layout > * { min-width: 0; }
 
 .detail-stack,
 .watchlist-groups,
@@ -1014,8 +1017,14 @@ h3 {
   gap: 16px;
 }
 
+.detail-stack {
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .detail-panel,
 .empty-state {
+  min-width: 0;
   padding: 18px;
   border-radius: var(--radius);
 }
@@ -1092,9 +1101,12 @@ h3 {
 
 .detail-rail-panel { margin-top: 16px; }
 .detail-rail-shell { position: relative; }
+.detail-rail-shell { min-width: 0; max-width: 100%; }
 .detail-rail {
   display: flex;
   gap: 12px;
+  min-width: 0;
+  max-width: 100%;
   overflow-x: auto;
   padding: 3px 2px 12px;
   scroll-behavior: smooth;
@@ -1115,13 +1127,28 @@ h3 {
   padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius);
+  color: var(--text);
   background: rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
   scroll-snap-align: start;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
 }
+.review-card:hover,
+.review-card:focus-visible { border-color: rgba(97, 229, 196, 0.56); background: rgba(255, 255, 255, 0.07); transform: translateY(-2px); }
 .review-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .review-card-heading span { color: var(--accent); font-size: 13px; font-weight: 900; }
 .review-card p { display: -webkit-box; overflow: hidden; margin: 12px 0 0; color: var(--muted); line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
 .related-rail .rail-movie { flex-basis: 164px; }
+
+.review-dialog { width: min(640px, calc(100% - 28px)); max-height: min(680px, calc(100dvh - 28px)); overflow: auto; }
+.review-dialog-content { position: relative; padding: 24px; }
+.review-close { position: absolute; top: 14px; right: 14px; }
+.review-dialog-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding-right: 36px; }
+.review-dialog-heading h2 { margin: 0; }
+.review-dialog-heading span { color: var(--accent); font-size: 15px; font-weight: 900; white-space: nowrap; }
+.review-dialog-copy { margin: 18px 0 0; color: var(--muted); line-height: 1.65; white-space: pre-line; }
 
 .cast-card span,
 .cast-card small {
@@ -1138,6 +1165,11 @@ h3 {
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: var(--radius);
   background: rgba(0, 0, 0, 0.28);
+}
+
+.trailer-panel .video-frame {
+  width: min(100%, 640px);
+  margin-inline: auto;
 }
 
 .video-frame iframe {

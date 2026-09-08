@@ -312,6 +312,8 @@ const prefRatingInput = document.querySelector("#prefRatingInput");
 const prefSortSelect = document.querySelector("#prefSortSelect");
 const quickLookDialog = document.querySelector("#quickLookDialog");
 const quickLookContent = document.querySelector("#quickLookContent");
+const reviewDialog = document.querySelector("#reviewDialog");
+const reviewDialogContent = document.querySelector("#reviewDialogContent");
 const goTopButton = document.querySelector("#goTopButton");
 
 goTopButton?.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
@@ -1043,7 +1045,7 @@ async function renderDetail(movieId, mediaType = state.mediaType) {
     document.querySelector("#detailStatusSelect").addEventListener("input", (event) => {
       setWatchStatus(movie, event.target.value);
     });
-    wireDetailRails();
+    wireDetailRails(reviews);
     requestAnimationFrame(() => window.scrollTo(0, 0));
   } catch (error) {
     console.error(error);
@@ -1056,7 +1058,7 @@ function renderTrailerPanel(trailer) {
     return `<div class="detail-panel"><h2>Trailers</h2><p class="muted">No trailers are available for this title yet.</p></div>`;
   }
   return `
-    <div class="detail-panel">
+    <div class="detail-panel trailer-panel">
       <h2>Trailer</h2>
       <div class="video-frame">
         <iframe title="${escapeHtml(trailer.name || "Trailer")}" src="https://www.youtube.com/embed/${encodeURIComponent(trailer.key)}?controls=1&rel=0&modestbranding=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe>
@@ -1099,10 +1101,10 @@ function renderCastPanel(cast) {
 }
 
 function renderReviewsPanel(reviews) {
-  const cards = reviews.slice(0, 12).map((review) => {
+  const cards = reviews.slice(0, 12).map((review, index) => {
     const author = review.author_details?.name || review.author_details?.username || review.author || "TMDb member";
     const rating = review.author_details?.rating;
-    return `<article class="review-card"><div class="review-card-heading"><strong>${escapeHtml(author)}</strong>${rating ? `<span>${Number(rating).toFixed(1)} / 10</span>` : ""}</div><p>${escapeHtml(review.content || "No review text was provided.")}</p></article>`;
+    return `<button class="review-card" type="button" data-review-index="${index}" aria-label="Read full review by ${escapeHtml(author)}"><div class="review-card-heading"><strong>${escapeHtml(author)}</strong>${rating ? `<span>${Number(rating).toFixed(1)} / 10</span>` : ""}</div><p>${escapeHtml(review.content || "No review text was provided.")}</p></button>`;
   }).join("");
   return renderDetailRail("Reviews", cards || `<p class="muted">No reviews are available for this title yet.</p>`, "review-rail", "reviews");
 }
@@ -1118,13 +1120,23 @@ function renderDetailRail(title, content, className, railName) {
   return `<section class="detail-panel detail-rail-panel"><div class="section-heading"><h2>${title}</h2><span>Swipe to browse</span></div><div class="detail-rail-shell"><button class="rail-arrow rail-arrow-left" type="button" aria-label="Scroll ${railName} left">‹</button><div class="detail-rail ${className}" data-detail-rail>${content}</div><button class="rail-arrow rail-arrow-right" type="button" aria-label="Scroll ${railName} right">›</button></div></section>`;
 }
 
-function wireDetailRails() {
+function wireDetailRails(reviews = []) {
+  app.querySelectorAll("[data-review-index]").forEach((card) => card.addEventListener("click", () => showReview(reviews[Number(card.dataset.reviewIndex)])));
   app.querySelectorAll("[data-detail-route]").forEach((button) => button.addEventListener("click", () => { window.location.hash = button.dataset.detailRoute; }));
   app.querySelectorAll(".detail-rail-shell").forEach((shell) => {
     const rail = shell.querySelector("[data-detail-rail]");
     shell.querySelector(".rail-arrow-left").addEventListener("click", () => rail.scrollBy({ left: -rail.clientWidth * 0.8, behavior: "smooth" }));
     shell.querySelector(".rail-arrow-right").addEventListener("click", () => rail.scrollBy({ left: rail.clientWidth * 0.8, behavior: "smooth" }));
   });
+}
+
+function showReview(review) {
+  if (!reviewDialog || !reviewDialogContent || !review) return;
+  const author = review.author_details?.name || review.author_details?.username || review.author || "TMDb member";
+  const rating = review.author_details?.rating;
+  reviewDialogContent.innerHTML = `<button class="icon-button review-close" type="button" aria-label="Close review" title="Close">×</button><p class="eyebrow">Full review</p><div class="review-dialog-heading"><h2 id="reviewDialogTitle">${escapeHtml(author)}</h2>${rating ? `<span>${Number(rating).toFixed(1)} / 10</span>` : ""}</div><p class="review-dialog-copy">${escapeHtml(review.content || "No review text was provided.")}</p>`;
+  reviewDialogContent.querySelector(".review-close").addEventListener("click", () => reviewDialog.close());
+  reviewDialog.showModal();
 }
 
 function renderPersonCard(person, subtext) {
