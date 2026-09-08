@@ -345,7 +345,6 @@ async function renderHome() {
       <div id="searchSuggestions" class="suggestions is-hidden"></div>
     </section>
     <section class="program-section is-hidden" id="discoveryRails"></section>
-    <section class="how-to-panel"><p class="eyebrow">Live data</p><h2>How to connect TMDb</h2><ol><li>Open <a class="inline-link" href="https://www.themoviedb.org/settings/api" target="_blank" rel="noreferrer">TMDb API settings</a> and sign in or create a free account.</li><li>Request an API key from the API section and complete the short form.</li><li>Copy the API key, open the settings button above, paste it, and select Save key.</li></ol></section>
     <section class="program-section mood-program">
       <div class="section-heading"><h2>Pick by mood</h2><span>Filters chronological discovery</span></div>
       <div class="mood-rail" id="moodRail"></div><button class="ghost-button mood-more" id="moreMoodButton" type="button">New moods</button>
