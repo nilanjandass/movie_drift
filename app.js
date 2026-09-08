@@ -769,7 +769,6 @@ function renderDiscoveryRails(movies) {
   const entries = [
     ["Trending now", fillRail([...movies].sort((a, b) => Number(b.popularity || 0) - Number(a.popularity || 0)))],
     ["Critically acclaimed", fillRail([...movies].filter((movie) => Number(movie.vote_average || 0) >= 7.5))],
-    ["New in India", fillRail([...movies].filter((movie) => ["hi", "ta", "te", "ml", "kn", "bn", "mr"].includes(movie.original_language)))],
   ].filter(([, list]) => list.length);
   if (!entries.length) {
     target.classList.add("is-hidden");
