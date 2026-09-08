@@ -260,6 +260,7 @@ const state = {
   loading: false,
   movies: [],
   observer: null,
+  revealObserver: null,
   searchTimer: null,
   featureSlides: [],
   featuredIndex: 0,
@@ -351,6 +352,7 @@ function route() {
   const personMatch = hash.match(/^#\/person\/(\d+)/);
 
   if (hash !== "#/") clearInterval(state.featureTimer);
+  disconnectRevealObserver();
 
   if (detailMatch) {
     state.route = "detail";
@@ -446,6 +448,7 @@ async function renderHome() {
     </section>
   `;
 
+  setupScrollReveals();
   wireSearch();
   wireFilters();
   await loadGenres();
@@ -560,10 +563,22 @@ function wireFilters() {
   state.filterAbort = new AbortController();
   const { signal } = state.filterAbort;
 
+  let closeTimer = null;
   const setPopoverOpen = (isOpen) => {
-    popover.classList.toggle("is-hidden", !isOpen);
+    clearTimeout(closeTimer);
     toggle.setAttribute("aria-expanded", String(isOpen));
-    if (isOpen) popover.querySelector("select, input")?.focus();
+    if (isOpen) {
+      popover.classList.remove("is-hidden", "is-closing");
+      requestAnimationFrame(() => popover.classList.add("is-open"));
+      popover.querySelector("select, input")?.focus();
+      return;
+    }
+    popover.classList.remove("is-open");
+    popover.classList.add("is-closing");
+    closeTimer = setTimeout(() => {
+      popover.classList.add("is-hidden");
+      popover.classList.remove("is-closing");
+    }, 180);
   };
 
   toggle.addEventListener("click", () => setPopoverOpen(popover.classList.contains("is-hidden")), { signal });
@@ -746,7 +761,12 @@ function renderMovieBatch(movies, target) {
     card.querySelector(".movie-meta").innerHTML = movieMeta(movie);
     card.querySelector(".movie-overview").textContent = movie.overview || "No synopsis is available yet.";
     score.style.setProperty("--score", Math.min(10, Math.max(0, Number(movie.vote_average || 0))));
+    const scoreTarget = Math.min(10, Math.max(0, Number(movie.vote_average || 0)));
+    score.style.setProperty("--score", "0");
+    requestAnimationFrame(() => score.style.setProperty("--score", scoreTarget));
     score.querySelector(".score-value").textContent = Number(movie.vote_average || 0).toFixed(1);
+    card.classList.add("reveal-card");
+    state.revealObserver?.observe(card);
 
     const openMedia = () => { window.location.hash = mediaRoute(movie); };
     title.addEventListener("click", openMedia);
@@ -791,7 +811,13 @@ function paintFeaturedSlide() {
   const target = document.querySelector("#featuredSpotlight");
   const movie = state.featureSlides[state.featuredIndex];
   if (!target || !movie) return;
-  target.style.setProperty("--featured-image", `url("${posterUrl(movie.backdrop_path || movie.poster_path, "w1280", mediaTitle(movie))}")`);
+  target.classList.remove("is-transitioning");
+  const featureImagePath = movie.backdrop_path || movie.poster_path;
+  if (featureImagePath) {
+    target.style.setProperty("--featured-image", `url("${posterUrl(featureImagePath, "w1280", mediaTitle(movie))}")`);
+  } else {
+    target.style.removeProperty("--featured-image");
+  }
   target.innerHTML = `
     <div class="feature-copy">
       <p class="eyebrow">Tonight's pick · ${escapeHtml(genreNames(movie.genre_ids) || "Featured")}</p>
@@ -803,6 +829,8 @@ function paintFeaturedSlide() {
     </div>
     <div class="feature-navigation"><div class="feature-dots">${state.featureSlides.map((_, index) => `<button type="button" class="${index === state.featuredIndex ? "is-active" : ""}" data-slide-to="${index}" aria-label="Show pick ${index + 1}"></button>`).join("")}</div></div>
   `;
+  void target.offsetWidth;
+  target.classList.add("is-transitioning");
   document.querySelector("#featureDetailsButton").addEventListener("click", () => { window.location.hash = mediaRoute(movie); });
   document.querySelector("#featureQuickLookButton").addEventListener("click", () => showQuickLook(movie));
   target.querySelectorAll("[data-slide-to]").forEach((button) => button.addEventListener("click", () => {
@@ -1230,6 +1258,27 @@ function setupInfiniteScroll() {
     if (entries.some((entry) => entry.isIntersecting)) loadNextPage();
   }, { rootMargin: "600px" });
   state.observer.observe(sentinel);
+}
+
+function setupScrollReveals() {
+  disconnectRevealObserver();
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  state.revealObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add("is-revealed");
+      observer.unobserve(entry.target);
+    });
+  }, { threshold: 0.08, rootMargin: "0px 0px -5%" });
+  document.querySelectorAll(".media-switch, .cinema-stage, .search-panel, .program-section, .discovery-section").forEach((section) => {
+    section.classList.add("reveal-on-scroll");
+    state.revealObserver.observe(section);
+  });
+}
+
+function disconnectRevealObserver() {
+  if (state.revealObserver) state.revealObserver.disconnect();
+  state.revealObserver = null;
 }
 
 function disconnectObserver() {
