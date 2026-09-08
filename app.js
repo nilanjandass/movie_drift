@@ -98,6 +98,17 @@ const FALLBACK_MOVIES = [
   },
 ];
 
+const FALLBACK_SERIES = [
+  { id: 960101, name: "Signal Harbour", first_air_date: "2026-07-10", vote_average: 8.4, vote_count: 2410, popularity: 96, original_language: "en", genre_ids: [878, 53], overview: "A lighthouse keeper begins receiving distress calls from a coast that vanished forty years ago.", poster_path: null, backdrop_path: null, number_of_seasons: 2, number_of_episodes: 16, episode_run_time: [52] },
+  { id: 960102, name: "The Mango Season", first_air_date: "2026-07-03", vote_average: 7.6, vote_count: 1830, popularity: 82, original_language: "hi", genre_ids: [18, 10749], overview: "Three siblings return to their ancestral home and find old promises ripening with the monsoon.", poster_path: null, backdrop_path: null, number_of_seasons: 1, number_of_episodes: 8, episode_run_time: [48] },
+  { id: 960103, name: "Night Shift Kolkata", first_air_date: "2026-06-26", vote_average: 8.1, vote_count: 2199, popularity: 91, original_language: "bn", genre_ids: [18, 53], overview: "An emergency room team unravels a citywide conspiracy between midnight admissions.", poster_path: null, backdrop_path: null, number_of_seasons: 3, number_of_episodes: 24, episode_run_time: [44] },
+  { id: 960104, name: "After the Last Bell", first_air_date: "2026-06-19", vote_average: 7.4, vote_count: 1420, popularity: 75, original_language: "ko", genre_ids: [35, 18], overview: "A substitute teacher turns a failing after-school club into a surprising second chance.", poster_path: null, backdrop_path: null, number_of_seasons: 1, number_of_episodes: 12, episode_run_time: [58] },
+  { id: 960105, name: "Astral House", first_air_date: "2026-06-12", vote_average: 8.0, vote_count: 2015, popularity: 88, original_language: "ja", genre_ids: [16, 878], overview: "Every room in a small apartment block opens onto a different planet after midnight.", poster_path: null, backdrop_path: null, number_of_seasons: 2, number_of_episodes: 20, episode_run_time: [26] },
+  { id: 960106, name: "Salt Lines", first_air_date: "2026-06-05", vote_average: 7.8, vote_count: 1674, popularity: 79, original_language: "es", genre_ids: [28, 18], overview: "A marine rescue crew crosses hostile waters to protect a community the map forgot.", poster_path: null, backdrop_path: null, number_of_seasons: 1, number_of_episodes: 10, episode_run_time: [50] },
+  { id: 960107, name: "The Quiet District", first_air_date: "2026-05-29", vote_average: 7.2, vote_count: 1102, popularity: 67, original_language: "fr", genre_ids: [27, 53], overview: "A sound engineer notices an entire neighbourhood has stopped making noise.", poster_path: null, backdrop_path: null, number_of_seasons: 1, number_of_episodes: 6, episode_run_time: [55] },
+  { id: 960108, name: "Chai and Code", first_air_date: "2026-05-22", vote_average: 7.9, vote_count: 1530, popularity: 77, original_language: "en", genre_ids: [35, 18], overview: "Two rival app founders are forced to share a studio and a family recipe book.", poster_path: null, backdrop_path: null, number_of_seasons: 2, number_of_episodes: 18, episode_run_time: [32] },
+];
+
 const FALLBACK_DETAILS = {
   runtime: 122,
   status: "Released",
@@ -142,6 +153,15 @@ const FALLBACK_DETAILS = {
   },
 };
 
+const FALLBACK_SERIES_DETAILS = {
+  ...FALLBACK_DETAILS,
+  status: "Returning Series",
+  created_by: [{ id: 7001, name: "Mira Solenne", profile_path: null }],
+  number_of_seasons: 2,
+  number_of_episodes: 16,
+  episode_run_time: [52],
+};
+
 const FALLBACK_PEOPLE = {
   7001: {
     id: 7001,
@@ -184,14 +204,6 @@ const LANGUAGES = [
   ["pt", "Portuguese"],
 ];
 
-const SORT_OPTIONS = [
-  ["primary_release_date.desc", "Newest release"],
-  ["primary_release_date.asc", "Oldest release"],
-  ["vote_average.desc", "Highest rated"],
-  ["popularity.desc", "Most popular"],
-  ["original_title.asc", "Title A-Z"],
-];
-
 const WATCH_STATUSES = [
   ["want", "Want to Watch"],
   ["watching", "Watching"],
@@ -200,9 +212,35 @@ const WATCH_STATUSES = [
 
 const MAJOR_INDIA_PARTNERS = ["Amazon Prime Video", "Netflix", "JioHotstar", "ZEE5", "Hoichoi", "SonyLIV", "Apple TV", "Google Play Movies", "MUBI", "Sun Nxt", "aha"];
 
+const MEDIA_CONFIG = {
+  movie: {
+    endpoint: "movie",
+    collection: FALLBACK_MOVIES,
+    dateField: "release_date",
+    titleField: "title",
+    dateFilter: "primary_release_date",
+    defaultSort: "primary_release_date.desc",
+    titleSort: "original_title.asc",
+    label: "Movies",
+    singular: "movie",
+  },
+  tv: {
+    endpoint: "tv",
+    collection: FALLBACK_SERIES,
+    dateField: "first_air_date",
+    titleField: "name",
+    dateFilter: "first_air_date",
+    defaultSort: "first_air_date.desc",
+    titleSort: "original_name.asc",
+    label: "Series",
+    singular: "series",
+  },
+};
+
 const state = {
   route: "home",
   movieId: null,
+  mediaType: "movie",
   personId: null,
   apiKey: localStorage.getItem(API_KEY_STORAGE) || "",
   genres: FALLBACK_GENRES,
@@ -233,7 +271,35 @@ const state = {
 
 state.filters.language = state.prefs.language;
 state.filters.minRating = state.prefs.minRating;
-state.filters.sortBy = normalizeSort(state.prefs.sortBy);
+state.filters.sortBy = normalizeSort(state.prefs.sortBy, state.mediaType);
+
+function activeMediaConfig() {
+  return MEDIA_CONFIG[state.mediaType];
+}
+
+function defaultSort(mediaType = state.mediaType) {
+  return MEDIA_CONFIG[mediaType].defaultSort;
+}
+
+function sortOptionsForActiveMedia() {
+  const media = activeMediaConfig();
+  return [
+    [media.defaultSort, "Newest release"],
+    [`${media.dateField}.asc`, "Oldest release"],
+    ["vote_average.desc", "Highest rated"],
+    ["popularity.desc", "Most popular"],
+    [media.titleSort, "Title A-Z"],
+  ];
+}
+
+function ensureMediaSort() {
+  const validSorts = new Set(sortOptionsForActiveMedia().map(([value]) => value));
+  if (!validSorts.has(state.filters.sortBy)) state.filters.sortBy = defaultSort();
+}
+
+function withMediaType(items, mediaType = state.mediaType) {
+  return (items || []).map((item) => ({ ...item, media_type: mediaType }));
+}
 
 const app = document.querySelector("#app");
 const settingsDialog = document.querySelector("#settingsDialog");
@@ -281,6 +347,7 @@ route();
 function route() {
   const hash = window.location.hash || "#/";
   const detailMatch = hash.match(/^#\/movie\/(\d+)/);
+  const seriesDetailMatch = hash.match(/^#\/series\/(\d+)/);
   const personMatch = hash.match(/^#\/person\/(\d+)/);
 
   if (hash !== "#/") clearInterval(state.featureTimer);
@@ -288,8 +355,18 @@ function route() {
   if (detailMatch) {
     state.route = "detail";
     state.movieId = Number(detailMatch[1]);
+    state.mediaType = "movie";
     setActiveNav("");
-    renderDetail(state.movieId);
+    renderDetail(state.movieId, "movie");
+    return;
+  }
+
+  if (seriesDetailMatch) {
+    state.route = "detail";
+    state.movieId = Number(seriesDetailMatch[1]);
+    state.mediaType = "tv";
+    setActiveNav("");
+    renderDetail(state.movieId, "tv");
     return;
   }
 
@@ -311,7 +388,9 @@ function route() {
   state.route = "home";
   state.movieId = null;
   state.personId = null;
-  setActiveNav("home");
+  state.mediaType = hash === "#/series" ? "tv" : "movie";
+  ensureMediaSort();
+  setActiveNav(state.mediaType);
   renderHome();
 }
 
@@ -324,31 +403,36 @@ function setActiveNav(routeName) {
 function renderPreferenceControls() {
   if (!prefLanguageSelect || !prefRatingInput || !prefSortSelect) return;
   prefLanguageSelect.innerHTML = LANGUAGES.map(([value, label]) => `<option value="${value}" ${state.prefs.language === value ? "selected" : ""}>${label}</option>`).join("");
-  prefSortSelect.innerHTML = SORT_OPTIONS.map(([value, label]) => `<option value="${value}" ${normalizeSort(state.prefs.sortBy) === value ? "selected" : ""}>${label}</option>`).join("");
+  prefSortSelect.innerHTML = sortOptionsForActiveMedia().map(([value, label]) => `<option value="${value}" ${normalizeSort(state.prefs.sortBy, state.mediaType) === value ? "selected" : ""}>${label}</option>`).join("");
   prefRatingInput.value = state.prefs.minRating;
 }
 
 async function renderHome() {
   disconnectObserver();
+  const media = activeMediaConfig();
   app.innerHTML = `
+    <nav class="media-switch" aria-label="Discover content type">
+      <a href="#/" class="media-switch-link ${state.mediaType === "movie" ? "is-active" : ""}">Discover Movies</a>
+      <a href="#/series" class="media-switch-link ${state.mediaType === "tv" ? "is-active" : ""}">Discover Series</a>
+    </nav>
     <section class="cinema-stage" id="featuredSpotlight">
       <div class="feature-copy">
         <p class="eyebrow">Tonight's pick</p>
-        <h1>Finding a film worth your evening.</h1>
-        <p class="hero-copy">Loading a considered pick from the latest releases.</p>
+        <h1>Finding a ${media.singular} worth your evening.</h1>
+        <p class="hero-copy">Loading a considered pick from the latest ${media.label.toLowerCase()}.</p>
       </div>
     </section>
     <section class="search-panel">
       <label class="field search-field">
-        <span>Search movies</span>
-        <input id="movieSearchInput" type="search" placeholder="Search by title" value="${escapeHtml(state.filters.query)}" autocomplete="off" />
+        <span>Search ${media.label.toLowerCase()}</span>
+        <input id="movieSearchInput" type="search" placeholder="Search ${media.singular} by title" value="${escapeHtml(state.filters.query)}" autocomplete="off" />
       </label>
       <div id="searchSuggestions" class="suggestions is-hidden"></div>
     </section>
     <section class="program-section is-hidden" id="discoveryRails"></section>
     <section class="discovery-section">
       <div class="toolbar">
-        <h2>${state.filters.query ? "Search results" : "Chronological discovery"}</h2>
+        <h2>${state.filters.query ? `${media.label} search results` : `Chronological ${media.singular} discovery`}</h2>
         <button class="filter-toggle" id="filterToggle" type="button" aria-expanded="false" aria-controls="filterPopover">Filters</button>
       </div>
       <div class="filter-popover is-hidden" id="filterPopover">
@@ -357,7 +441,7 @@ async function renderHome() {
         </form>
       </div>
       <div class="movie-grid" id="movieGrid"></div>
-      <div class="loader" id="loader">Loading movies...</div>
+      <div class="loader" id="loader">Loading ${media.label.toLowerCase()}...</div>
       <div class="sentinel" id="sentinel"></div>
     </section>
   `;
@@ -400,7 +484,7 @@ function renderFilters() {
     <label class="field">
       <span>Sort by</span>
       <select name="sortBy">
-        ${SORT_OPTIONS.map(([value, label]) => `<option value="${value}" ${state.filters.sortBy === value ? "selected" : ""}>${label}</option>`).join("")}
+        ${sortOptionsForActiveMedia().map(([value, label]) => `<option value="${value}" ${state.filters.sortBy === value ? "selected" : ""}>${label}</option>`).join("")}
       </select>
     </label>
     <label class="availability-filter"><input name="indiaAvailable" type="checkbox" ${state.filters.indiaAvailable ? "checked" : ""} /><span>Available in India</span></label>
@@ -441,27 +525,28 @@ async function renderSuggestions(query, target) {
     return;
   }
 
-  target.innerHTML = results.slice(0, 6).map((movie) => `
-    <button class="suggestion" type="button" data-movie-id="${movie.id}">
-      <img src="${posterUrl(movie.poster_path, "w185", movie.title)}" alt="" />
-      <span><strong>${escapeHtml(movie.title || "Untitled")}</strong><small>${formatYear(movie.release_date)} | ${Number(movie.vote_average || 0).toFixed(1)} / 10</small></span>
+  target.innerHTML = results.slice(0, 6).map((item) => `
+    <button class="suggestion" type="button" data-media-route="${mediaRoute(item)}">
+      <img src="${posterUrl(item.poster_path, "w185", mediaTitle(item))}" alt="" />
+      <span><strong>${escapeHtml(mediaTitle(item))}</strong><small>${formatYear(mediaDate(item))} | ${Number(item.vote_average || 0).toFixed(1)} / 10</small></span>
     </button>
   `).join("");
   target.classList.remove("is-hidden");
-  target.querySelectorAll("[data-movie-id]").forEach((button) => {
+  target.querySelectorAll("[data-media-route]").forEach((button) => {
     button.addEventListener("click", () => {
-      window.location.hash = `#/movie/${button.dataset.movieId}`;
+      window.location.hash = button.dataset.mediaRoute;
     });
   });
 }
 
 async function fetchSearchSuggestions(query) {
+  const media = activeMediaConfig();
   if (!state.apiKey) {
-    return FALLBACK_MOVIES.filter((movie) => movie.title.toLowerCase().includes(query.toLowerCase()));
+    return withMediaType(media.collection.filter((item) => mediaTitle(item).toLowerCase().includes(query.toLowerCase())));
   }
   const params = new URLSearchParams({ api_key: state.apiKey, query, include_adult: "false", page: "1" });
-  const data = await cachedFetch(`${TMDB_BASE_URL}/search/movie?${params}`, `search:${params}`);
-  return data.results || [];
+  const data = await cachedFetch(`${TMDB_BASE_URL}/search/${media.endpoint}?${params}`, `${media.endpoint}-search:${params}`);
+  return withMediaType(data.results);
 }
 
 function wireFilters() {
@@ -491,7 +576,7 @@ function wireFilters() {
       fromYear: data.get("fromYear") || "",
       toYear: data.get("toYear") || "",
       minRating: data.get("minRating") || "",
-      sortBy: normalizeSort(data.get("sortBy")),
+      sortBy: normalizeSort(data.get("sortBy"), state.mediaType),
       indiaAvailable: data.get("indiaAvailable") === "on",
     };
     savePreferencesFromFilters();
@@ -499,14 +584,14 @@ function wireFilters() {
   }, 250), { signal });
 
   clear.addEventListener("click", () => {
-    state.filters = { language: "", genre: "", fromYear: "", toYear: "", minRating: "", sortBy: "primary_release_date.desc", query: state.filters.query, indiaAvailable: false };
+    state.filters = { language: "", genre: "", fromYear: "", toYear: "", minRating: "", sortBy: defaultSort(), query: state.filters.query, indiaAvailable: false };
     savePreferencesFromFilters();
     form.elements.language.value = "";
     form.elements.genre.value = "";
     form.elements.fromYear.value = "";
     form.elements.toYear.value = "";
     form.elements.minRating.value = "";
-    form.elements.sortBy.value = "primary_release_date.desc";
+    form.elements.sortBy.value = defaultSort();
     form.elements.indiaAvailable.checked = false;
     refreshHome();
   }, { signal });
@@ -541,12 +626,12 @@ async function loadNextPage() {
   if (state.loading || state.page > state.totalPages) return;
   const requestedPage = state.page;
   state.loading = true;
-  updateLoader("Loading movies...");
+  updateLoader(`Loading ${activeMediaConfig().label.toLowerCase()}...`);
 
   try {
-    const data = await fetchMovies(requestedPage);
+    const data = await fetchMedia(requestedPage);
     state.totalPages = Math.min(data.total_pages || 1, 500);
-    const normalized = data.results || [];
+    const normalized = withMediaType(data.results);
     state.movies = state.movies.concat(normalized);
     const grid = document.querySelector("#movieGrid");
     if (requestedPage === 1) grid.innerHTML = "";
@@ -559,14 +644,15 @@ async function loadNextPage() {
     updateLoader(state.page > state.totalPages ? "You reached the end." : "");
   } catch (error) {
     console.error(error);
-    updateLoader("Could not load more movies. Check the API key or try again.");
+    updateLoader(`Could not load more ${activeMediaConfig().label.toLowerCase()}. Check the API key or try again.`);
   } finally {
     state.loading = false;
   }
 }
 
-async function fetchMovies(page) {
-  if (!state.apiKey) return filterFallbackMovies(page);
+async function fetchMedia(page) {
+  const media = activeMediaConfig();
+  if (!state.apiKey) return filterFallbackMedia(page);
 
   if (state.filters.query) {
     const params = new URLSearchParams({
@@ -575,8 +661,8 @@ async function fetchMovies(page) {
       query: state.filters.query,
       include_adult: "false",
     });
-    const data = await cachedFetch(`${TMDB_BASE_URL}/search/movie?${params}`, `movie-search:${params}`);
-    return { ...data, results: filterAndSortMovies(data.results || []) };
+    const data = await cachedFetch(`${TMDB_BASE_URL}/search/${media.endpoint}?${params}`, `${media.endpoint}-search:${params}`);
+    return { ...data, results: filterAndSortMedia(data.results || []) };
   }
 
   const params = new URLSearchParams({
@@ -589,56 +675,57 @@ async function fetchMovies(page) {
 
   if (state.filters.language) params.set("with_original_language", state.filters.language);
   if (state.filters.genre) params.set("with_genres", state.filters.genre);
-  if (state.filters.fromYear) params.set("primary_release_date.gte", `${state.filters.fromYear}-01-01`);
-  if (state.filters.toYear) params.set("primary_release_date.lte", `${state.filters.toYear}-12-31`);
+  if (state.filters.fromYear) params.set(`${media.dateFilter}.gte`, `${state.filters.fromYear}-01-01`);
+  if (state.filters.toYear) params.set(`${media.dateFilter}.lte`, `${state.filters.toYear}-12-31`);
   if (state.filters.minRating) params.set("vote_average.gte", state.filters.minRating);
   if (state.filters.indiaAvailable) {
     params.set("watch_region", "IN");
     params.set("with_watch_monetization_types", "flatrate|free|ads|rent|buy");
   }
 
-  return cachedFetch(`${TMDB_BASE_URL}/discover/movie?${params}`, `discover:${params}`);
+  return cachedFetch(`${TMDB_BASE_URL}/discover/${media.endpoint}?${params}`, `discover:${media.endpoint}:${params}`);
 }
 
-function filterFallbackMovies(page) {
+function filterFallbackMedia(page) {
+  const media = activeMediaConfig();
   const pageSize = 6;
   const source = state.filters.query
-    ? FALLBACK_MOVIES.filter((movie) => movie.title.toLowerCase().includes(state.filters.query.toLowerCase()))
-    : FALLBACK_MOVIES;
-  const movies = filterAndSortMovies(source);
+    ? media.collection.filter((item) => mediaTitle(item).toLowerCase().includes(state.filters.query.toLowerCase()))
+    : media.collection;
+  const items = filterAndSortMedia(source);
   const start = (page - 1) * pageSize;
   return {
-    results: movies.slice(start, start + pageSize),
+    results: items.slice(start, start + pageSize),
     page,
-    total_pages: Math.max(1, Math.ceil(movies.length / pageSize)),
+    total_pages: Math.max(1, Math.ceil(items.length / pageSize)),
   };
 }
 
-function filterAndSortMovies(source) {
-  let movies = [...source];
+function filterAndSortMedia(source) {
+  let items = [...source];
 
-  if (state.filters.language) movies = movies.filter((movie) => movie.original_language === state.filters.language);
-  if (state.filters.genre) movies = movies.filter((movie) => (movie.genre_ids || []).includes(Number(state.filters.genre)));
-  if (state.filters.fromYear) movies = movies.filter((movie) => Number((movie.release_date || "0").slice(0, 4)) >= Number(state.filters.fromYear));
-  if (state.filters.toYear) movies = movies.filter((movie) => Number((movie.release_date || "9999").slice(0, 4)) <= Number(state.filters.toYear));
-  if (state.filters.minRating) movies = movies.filter((movie) => Number(movie.vote_average || 0) >= Number(state.filters.minRating));
-  if (state.filters.indiaAvailable) movies = movies.filter((movie) => movie.india_available !== false);
+  if (state.filters.language) items = items.filter((item) => item.original_language === state.filters.language);
+  if (state.filters.genre) items = items.filter((item) => (item.genre_ids || []).includes(Number(state.filters.genre)));
+  if (state.filters.fromYear) items = items.filter((item) => Number((mediaDate(item) || "0").slice(0, 4)) >= Number(state.filters.fromYear));
+  if (state.filters.toYear) items = items.filter((item) => Number((mediaDate(item) || "9999").slice(0, 4)) <= Number(state.filters.toYear));
+  if (state.filters.minRating) items = items.filter((item) => Number(item.vote_average || 0) >= Number(state.filters.minRating));
+  if (state.filters.indiaAvailable) items = items.filter((item) => item.india_available !== false);
 
   const sort = state.filters.sortBy;
-  movies.sort((a, b) => {
-    if (sort === "primary_release_date.asc") return (a.release_date || "").localeCompare(b.release_date || "");
+  items.sort((a, b) => {
+    if (sort.endsWith(".asc") && sort !== "original_title.asc" && sort !== "original_name.asc") return mediaDate(a).localeCompare(mediaDate(b));
     if (sort === "vote_average.desc") return Number(b.vote_average || 0) - Number(a.vote_average || 0);
     if (sort === "popularity.desc") return Number(b.popularity || 0) - Number(a.popularity || 0);
-    if (sort === "original_title.asc" || sort === "title.asc") return (a.title || "").localeCompare(b.title || "");
-    return (b.release_date || "").localeCompare(a.release_date || "");
+    if (sort === "original_title.asc" || sort === "original_name.asc" || sort === "title.asc") return mediaTitle(a).localeCompare(mediaTitle(b));
+    return mediaDate(b).localeCompare(mediaDate(a));
   });
-  return movies;
+  return items;
 }
 
 function renderMovieBatch(movies, target) {
   if (!target) return;
   if (state.page === 1 && movies.length === 0) {
-    target.innerHTML = `<div class="empty-state"><div><h2>No movies match those filters.</h2><p class="muted">Try a wider search, year range, or lower rating threshold.</p></div></div>`;
+    target.innerHTML = `<div class="empty-state"><div><h2>No ${activeMediaConfig().label.toLowerCase()} match those filters.</h2><p class="muted">Try a wider search, year range, or lower rating threshold.</p></div></div>`;
     return;
   }
 
@@ -653,22 +740,20 @@ function renderMovieBatch(movies, target) {
     const watchToggle = card.querySelector(".watch-toggle");
     const score = card.querySelector(".card-score");
 
-    poster.src = posterUrl(movie.poster_path, "w500", movie.title);
-    poster.alt = `${movie.title || "Movie"} poster`;
-    title.textContent = movie.title || movie.name || "Untitled";
+    poster.src = posterUrl(movie.poster_path, "w500", mediaTitle(movie));
+    poster.alt = `${mediaTitle(movie)} poster`;
+    title.textContent = mediaTitle(movie);
     card.querySelector(".movie-meta").innerHTML = movieMeta(movie);
     card.querySelector(".movie-overview").textContent = movie.overview || "No synopsis is available yet.";
     score.style.setProperty("--score", Math.min(10, Math.max(0, Number(movie.vote_average || 0))));
     score.querySelector(".score-value").textContent = Number(movie.vote_average || 0).toFixed(1);
 
-    const openMovie = () => {
-      window.location.hash = `#/movie/${movie.id}`;
-    };
-    title.addEventListener("click", openMovie);
-    posterButton.addEventListener("click", openMovie);
+    const openMedia = () => { window.location.hash = mediaRoute(movie); };
+    title.addEventListener("click", openMedia);
+    posterButton.addEventListener("click", openMedia);
     card.addEventListener("mouseenter", () => card.classList.add("is-previewed"));
     card.addEventListener("mouseleave", () => card.classList.remove("is-previewed"));
-    paintWatchButton(watchToggle, movie.id);
+    paintWatchButton(watchToggle, movie);
     watchToggle.addEventListener("click", () => toggleWatchlist(movie, watchToggle));
 
     fragment.appendChild(card);
@@ -706,19 +791,19 @@ function paintFeaturedSlide() {
   const target = document.querySelector("#featuredSpotlight");
   const movie = state.featureSlides[state.featuredIndex];
   if (!target || !movie) return;
-  target.style.setProperty("--featured-image", `url("${posterUrl(movie.backdrop_path || movie.poster_path, "w1280", movie.title)}")`);
+  target.style.setProperty("--featured-image", `url("${posterUrl(movie.backdrop_path || movie.poster_path, "w1280", mediaTitle(movie))}")`);
   target.innerHTML = `
     <div class="feature-copy">
       <p class="eyebrow">Tonight's pick · ${escapeHtml(genreNames(movie.genre_ids) || "Featured")}</p>
-      <h1>${escapeHtml(movie.title || "Untitled")}</h1>
-      <div class="detail-meta"><span>${Number(movie.vote_average || 0).toFixed(1)} / 10</span><span>${formatRuntime(movie.runtime || 122)}</span><span>${formatYear(movie.release_date)}</span></div>
+      <h1>${escapeHtml(mediaTitle(movie))}</h1>
+      <div class="detail-meta"><span>${Number(movie.vote_average || 0).toFixed(1)} / 10</span><span>${mediaTypeOf(movie) === "tv" ? `${movie.number_of_seasons || 1} season${Number(movie.number_of_seasons || 1) === 1 ? "" : "s"}` : formatRuntime(movie.runtime || 122)}</span><span>${formatYear(mediaDate(movie))}</span></div>
       <p class="hero-copy">${escapeHtml(movie.overview || "A standout from the latest releases.")}</p>
       <div class="pill-row">${moodLabels(movie, state.genres).map((label) => `<span class="pill">${label}</span>`).join("")}</div>
-      <div class="feature-actions"><button class="primary-button" id="featureDetailsButton">View film</button><button class="ghost-button" id="featureQuickLookButton">Quick look</button></div>
+      <div class="feature-actions"><button class="primary-button" id="featureDetailsButton">View ${mediaTypeOf(movie) === "tv" ? "series" : "film"}</button><button class="ghost-button" id="featureQuickLookButton">Quick look</button></div>
     </div>
     <div class="feature-navigation"><div class="feature-dots">${state.featureSlides.map((_, index) => `<button type="button" class="${index === state.featuredIndex ? "is-active" : ""}" data-slide-to="${index}" aria-label="Show pick ${index + 1}"></button>`).join("")}</div></div>
   `;
-  document.querySelector("#featureDetailsButton").addEventListener("click", () => { window.location.hash = `#/movie/${movie.id}`; });
+  document.querySelector("#featureDetailsButton").addEventListener("click", () => { window.location.hash = mediaRoute(movie); });
   document.querySelector("#featureQuickLookButton").addEventListener("click", () => showQuickLook(movie));
   target.querySelectorAll("[data-slide-to]").forEach((button) => button.addEventListener("click", () => {
     state.featuredIndex = Number(button.dataset.slideTo);
@@ -796,10 +881,10 @@ function renderDiscoveryRails(movies) {
   target.innerHTML = entries.map(([title, list]) => `
     <div class="program-section">
       <div class="section-heading"><h2>${title}</h2><span>Browse the shelf</span></div>
-      <div class="rail-shell"><button class="rail-arrow rail-arrow-left" type="button" aria-label="Scroll ${title} left">‹</button><div class="film-rail">${list.slice(0, 20).map((movie) => `<button class="rail-movie" type="button" data-rail-movie="${movie.id}"><img src="${posterUrl(movie.poster_path, "w342", movie.title)}" alt="${escapeHtml(movie.title || "Movie")} poster" loading="lazy" /><span>${escapeHtml(movie.title || "Untitled")}</span></button>`).join("")}</div><button class="rail-arrow rail-arrow-right" type="button" aria-label="Scroll ${title} right">›</button></div>
+      <div class="rail-shell"><button class="rail-arrow rail-arrow-left" type="button" aria-label="Scroll ${title} left">‹</button><div class="film-rail">${list.slice(0, 20).map((movie) => `<button class="rail-movie" type="button" data-rail-route="${mediaRoute(movie)}"><img src="${posterUrl(movie.poster_path, "w342", mediaTitle(movie))}" alt="${escapeHtml(mediaTitle(movie))} poster" loading="lazy" /><span>${escapeHtml(mediaTitle(movie))}</span></button>`).join("")}</div><button class="rail-arrow rail-arrow-right" type="button" aria-label="Scroll ${title} right">›</button></div>
     </div>
   `).join("");
-  target.querySelectorAll("[data-rail-movie]").forEach((button) => button.addEventListener("click", () => { window.location.hash = `#/movie/${button.dataset.railMovie}`; }));
+  target.querySelectorAll("[data-rail-route]").forEach((button) => button.addEventListener("click", () => { window.location.hash = button.dataset.railRoute; }));
   target.querySelectorAll(".rail-shell").forEach((shell) => {
     const rail = shell.querySelector(".film-rail");
     shell.querySelector(".rail-arrow-left").addEventListener("click", () => rail.scrollBy({ left: -rail.clientWidth * 0.8, behavior: "smooth" }));
@@ -820,11 +905,11 @@ function showQuickLook(movie) {
   if (!quickLookDialog || !quickLookContent) return;
   quickLookContent.innerHTML = `
     <button class="icon-button quick-close" type="button" aria-label="Close quick look" title="Close">×</button>
-    <img src="${posterUrl(movie.poster_path, "w500", movie.title)}" alt="${escapeHtml(movie.title || "Movie")} poster" />
+    <img src="${posterUrl(movie.poster_path, "w500", mediaTitle(movie))}" alt="${escapeHtml(mediaTitle(movie))} poster" />
     <div>
       <p class="eyebrow">Quick look</p>
-      <h2 id="quickLookTitle">${escapeHtml(movie.title || "Untitled")}</h2>
-      <div class="detail-meta"><span>${Number(movie.vote_average || 0).toFixed(1)} / 10</span><span>${formatYear(movie.release_date)}</span><span>${(movie.original_language || "").toUpperCase()}</span></div>
+      <h2 id="quickLookTitle">${escapeHtml(mediaTitle(movie))}</h2>
+      <div class="detail-meta"><span>${Number(movie.vote_average || 0).toFixed(1)} / 10</span><span>${formatYear(mediaDate(movie))}</span><span>${(movie.original_language || "").toUpperCase()}</span></div>
       <div class="pill-row">${moodLabels(movie, state.genres).map((label) => `<span class="pill">${label}</span>`).join("")}</div>
       <div class="detail-actions"><button class="primary-button" id="quickLookDetails">View film</button></div>
     </div>
@@ -833,44 +918,46 @@ function showQuickLook(movie) {
   quickLookContent.querySelector(".quick-close").addEventListener("click", () => quickLookDialog.close());
   quickLookContent.querySelector("#quickLookDetails").addEventListener("click", () => {
     quickLookDialog.close();
-    window.location.hash = `#/movie/${movie.id}`;
+    window.location.hash = mediaRoute(movie);
   });
   quickLookDialog.showModal();
 }
 
 function movieMeta(movie) {
-  const release = formatDate(movie.release_date);
+  const release = formatDate(mediaDate(movie));
   const rating = Number(movie.vote_average || 0).toFixed(1);
   const language = (movie.original_language || "").toUpperCase();
   return `<span>${release}</span><span>${rating} / 10</span><span>${language}</span>`;
 }
 
-async function renderDetail(movieId) {
+async function renderDetail(movieId, mediaType = state.mediaType) {
   disconnectObserver();
-  app.innerHTML = `<div class="loader">Loading movie details...</div>`;
+  const media = MEDIA_CONFIG[mediaType];
+  app.innerHTML = `<div class="loader">Loading ${media.singular} details...</div>`;
 
   try {
-    const movie = await fetchMovieDetail(movieId);
+    const movie = await fetchMediaDetail(movieId, mediaType);
     const directors = (movie.credits?.crew || []).filter((person) => person.job === "Director");
     const writers = (movie.credits?.crew || []).filter((person) => ["Writer", "Screenplay", "Story"].includes(person.job));
+    const creators = movie.created_by || directors;
     const cast = movie.credits?.cast || [];
     const companies = (movie.production_companies || []).map((company) => company.name).join(", ") || "Not listed";
     const genres = (movie.genres || []).map((genre) => genre.name).join(", ") || genreNames(movie.genre_ids);
     const videos = movie.videos?.results || [];
     const trailer = videos.find((video) => video.site === "YouTube" && video.type === "Trailer") || videos.find((video) => video.site === "YouTube");
     const providers = movie["watch/providers"]?.results?.IN || {};
-    const saved = state.watchlist[movie.id];
+    const saved = state.watchlist[watchlistKey(movie)];
 
     app.innerHTML = `
       <section class="detail-hero">
-        <img class="detail-poster" src="${posterUrl(movie.poster_path, "w780", movie.title)}" alt="${escapeHtml(movie.title || "Movie")} poster" />
+        <img class="detail-poster" src="${posterUrl(movie.poster_path, "w780", mediaTitle(movie))}" alt="${escapeHtml(mediaTitle(movie))} poster" />
         <div>
-          <p class="eyebrow">${formatDate(movie.release_date)}</p>
-          <h1>${escapeHtml(movie.title || "Untitled")}</h1>
+          <p class="eyebrow">${formatDate(mediaDate(movie))}</p>
+          <h1>${escapeHtml(mediaTitle(movie))}</h1>
           <div class="detail-meta">
             <span>${Number(movie.vote_average || 0).toFixed(1)} / 10</span>
             <span>${movie.vote_count || 0} votes</span>
-            <span>${formatRuntime(movie.runtime)}</span>
+            <span>${mediaType === "tv" ? `${movie.number_of_seasons || 0} seasons` : formatRuntime(movie.runtime)}</span>
             <span>${(movie.original_language || "").toUpperCase()}</span>
           </div>
           <div class="detail-actions">
@@ -878,7 +965,7 @@ async function renderDetail(movieId) {
               <option value="">Not saved</option>
               ${WATCH_STATUSES.map(([value, label]) => `<option value="${value}" ${saved?.status === value ? "selected" : ""}>${label}</option>`).join("")}
             </select>
-            <a class="ghost-button" href="#/">Back to discovery</a>
+            <a class="ghost-button" href="${mediaType === "tv" ? "#/series" : "#/"}">Back to discovery</a>
           </div>
           <p class="hero-copy">${escapeHtml(movie.overview || "No synopsis is available yet.")}</p>
         </div>
@@ -898,13 +985,12 @@ async function renderDetail(movieId) {
           <div class="detail-panel">
             <h2>Metadata</h2>
             <dl class="facts">
-              <div class="fact"><dt>Director</dt><dd>${renderPeopleLinks(directors)}</dd></div>
+              <div class="fact"><dt>${mediaType === "tv" ? "Creator" : "Director"}</dt><dd>${renderPeopleLinks(mediaType === "tv" ? creators : directors)}</dd></div>
               <div class="fact"><dt>Writer</dt><dd>${renderPeopleLinks(writers)}</dd></div>
               <div class="fact"><dt>Genre</dt><dd>${escapeHtml(genres || "Not listed")}</dd></div>
               <div class="fact"><dt>Production</dt><dd>${escapeHtml(companies)}</dd></div>
               <div class="fact"><dt>Status</dt><dd>${escapeHtml(movie.status || "Not listed")}</dd></div>
-              <div class="fact"><dt>Budget</dt><dd>${formatMoney(movie.budget)}</dd></div>
-              <div class="fact"><dt>Revenue</dt><dd>${formatMoney(movie.revenue)}</dd></div>
+              ${mediaType === "tv" ? `<div class="fact"><dt>Seasons</dt><dd>${movie.number_of_seasons || "Not listed"}</dd></div><div class="fact"><dt>Episodes</dt><dd>${movie.number_of_episodes || "Not listed"}</dd></div><div class="fact"><dt>Episode runtime</dt><dd>${formatRuntime(movie.episode_run_time?.[0])}</dd></div>` : `<div class="fact"><dt>Budget</dt><dd>${formatMoney(movie.budget)}</dd></div><div class="fact"><dt>Revenue</dt><dd>${formatMoney(movie.revenue)}</dd></div>`}
             </dl>
           </div>
         </aside>
@@ -922,13 +1008,13 @@ async function renderDetail(movieId) {
 
 function renderTrailerPanel(trailer) {
   if (!trailer) {
-    return `<div class="detail-panel"><h2>Trailers</h2><p class="muted">No trailers are available for this movie yet.</p></div>`;
+    return `<div class="detail-panel"><h2>Trailers</h2><p class="muted">No trailers are available for this title yet.</p></div>`;
   }
   return `
     <div class="detail-panel">
       <h2>Trailer</h2>
       <div class="video-frame">
-        <iframe title="${escapeHtml(trailer.name || "Movie trailer")}" src="https://www.youtube.com/embed/${encodeURIComponent(trailer.key)}?controls=1&rel=0&modestbranding=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe>
+        <iframe title="${escapeHtml(trailer.name || "Trailer")}" src="https://www.youtube.com/embed/${encodeURIComponent(trailer.key)}?controls=1&rel=0&modestbranding=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe>
       </div>
       <p class="muted video-note">Use the player controls to play, pause, or enter fullscreen from the control bar on the right.</p>
     </div>
@@ -976,18 +1062,20 @@ function renderPeopleLinks(people) {
   return people.map((person) => person.id ? `<a class="inline-link" href="#/person/${person.id}">${escapeHtml(person.name)}</a>` : escapeHtml(person.name)).join(", ");
 }
 
-async function fetchMovieDetail(movieId) {
-  const fallback = FALLBACK_MOVIES.find((movie) => movie.id === Number(movieId));
+async function fetchMediaDetail(movieId, mediaType = state.mediaType) {
+  const media = MEDIA_CONFIG[mediaType];
+  const fallback = media.collection.find((movie) => movie.id === Number(movieId));
   if (!state.apiKey) {
     if (!fallback) throw new Error("Fallback detail not found");
-    return { ...fallback, genres: FALLBACK_GENRES.filter((genre) => fallback.genre_ids.includes(genre.id)), ...FALLBACK_DETAILS };
+    return { ...fallback, media_type: mediaType, genres: FALLBACK_GENRES.filter((genre) => fallback.genre_ids.includes(genre.id)), ...(mediaType === "tv" ? FALLBACK_SERIES_DETAILS : FALLBACK_DETAILS) };
   }
 
   const params = new URLSearchParams({
     api_key: state.apiKey,
     append_to_response: "credits,videos,watch/providers",
   });
-  return cachedFetch(`${TMDB_BASE_URL}/movie/${movieId}?${params}`, `detail:${movieId}:${params}`);
+  const detail = await cachedFetch(`${TMDB_BASE_URL}/${media.endpoint}/${movieId}?${params}`, `detail:${media.endpoint}:${movieId}:${params}`);
+  return { ...detail, media_type: mediaType };
 }
 
 async function renderPerson(personId) {
@@ -1008,7 +1096,7 @@ async function renderPerson(personId) {
             <span>${escapeHtml(person.place_of_birth || "Place not listed")}</span>
           </div>
           <div class="detail-actions">
-            <a class="ghost-button" href="#/">Back to discovery</a>
+            <a class="ghost-button" href="${state.mediaType === "tv" ? "#/series" : "#/"}">Back to discovery</a>
           </div>
           <p class="hero-copy">${escapeHtml(person.biography || "No biography is available yet.")}</p>
         </div>
@@ -1031,7 +1119,7 @@ async function fetchPerson(personId) {
       biography: "Preview profile data appears here when using sample mode. Add a TMDb key for real actor and director pages.",
       known_for_department: "Acting",
       profile_path: null,
-      combined_credits: { cast: FALLBACK_MOVIES.map((movie) => ({ ...movie, character: "Featured role", media_type: "movie" })), crew: [] },
+      combined_credits: { cast: [...FALLBACK_MOVIES, ...FALLBACK_SERIES].map((movie) => ({ ...movie, character: "Featured role", media_type: movie.name ? "tv" : "movie" })), crew: [] },
     };
   }
   const params = new URLSearchParams({ api_key: state.apiKey, append_to_response: "combined_credits" });
@@ -1040,7 +1128,7 @@ async function fetchPerson(personId) {
 
 function normalizePersonCredits(person) {
   const credits = [...(person.combined_credits?.cast || []), ...(person.combined_credits?.crew || [])]
-    .filter((credit) => credit.media_type === "movie" || credit.title)
+    .filter((credit) => ["movie", "tv"].includes(credit.media_type) || credit.title || credit.name)
     .map((credit) => ({
       id: credit.id,
       title: credit.title || credit.name,
@@ -1052,6 +1140,7 @@ function normalizePersonCredits(person) {
       overview: credit.overview,
       poster_path: credit.poster_path,
       genre_ids: credit.genre_ids || [],
+      media_type: credit.media_type === "tv" || credit.name ? "tv" : "movie",
     }));
   const seen = new Set();
   return credits
@@ -1072,7 +1161,7 @@ function renderWatchlist() {
       <div>
         <p class="eyebrow">Personal queue</p>
         <h1>Your watchlist</h1>
-        <p class="hero-copy">Movies grouped by Want to Watch, Watching, and Watched.</p>
+        <p class="hero-copy">Movies and series grouped by Want to Watch, Watching, and Watched.</p>
       </div>
       <div class="status-card"><strong>${movies.length} saved</strong><p class="muted">Stored locally in this browser.</p></div>
     </section>
@@ -1081,7 +1170,7 @@ function renderWatchlist() {
 
   const root = document.querySelector("#watchlistGroups");
   if (!movies.length) {
-    root.innerHTML = `<div class="empty-state"><div><h2>No saved movies yet.</h2><p class="muted">Add movies from discovery or a detail page.</p><a class="primary-button" href="#/">Browse movies</a></div></div>`;
+    root.innerHTML = `<div class="empty-state"><div><h2>No saved titles yet.</h2><p class="muted">Add movies or series from discovery or a detail page.</p><a class="primary-button" href="#/">Browse movies</a></div></div>`;
     return;
   }
 
@@ -1097,18 +1186,19 @@ function renderWatchlist() {
     if (list.length) {
       renderMovieBatch(list, grid);
     } else {
-      grid.innerHTML = `<div class="empty-state compact-empty"><p class="muted">No movies here yet.</p></div>`;
+      grid.innerHTML = `<div class="empty-state compact-empty"><p class="muted">No titles here yet.</p></div>`;
     }
   });
 }
 
 async function loadGenres() {
+  const media = activeMediaConfig();
   if (!state.apiKey) {
     state.genres = FALLBACK_GENRES;
     return;
   }
   try {
-    const data = await cachedFetch(`${TMDB_BASE_URL}/genre/movie/list?api_key=${state.apiKey}`, "genres");
+    const data = await cachedFetch(`${TMDB_BASE_URL}/genre/${media.endpoint}/list?api_key=${state.apiKey}`, `genres:${media.endpoint}`);
     state.genres = data.genres || FALLBACK_GENRES;
   } catch (error) {
     console.warn("Using fallback genres", error);
@@ -1148,23 +1238,27 @@ function disconnectObserver() {
 }
 
 function toggleWatchlist(movie, button) {
-  if (state.watchlist[movie.id]) {
-    delete state.watchlist[movie.id];
+  const key = watchlistKey(movie);
+  if (state.watchlist[key]) {
+    delete state.watchlist[key];
   } else {
     setWatchStatus(movie, "want");
   }
   localStorage.setItem(WATCHLIST_KEY, JSON.stringify(state.watchlist));
-  if (button) paintWatchButton(button, movie.id);
+  if (button) paintWatchButton(button, movie);
 }
 
 function setWatchStatus(movie, status) {
+  const key = watchlistKey(movie);
   if (!status) {
-    delete state.watchlist[movie.id];
+    delete state.watchlist[key];
   } else {
-    state.watchlist[movie.id] = {
+    state.watchlist[key] = {
       id: movie.id,
-      title: movie.title,
-      release_date: movie.release_date,
+      title: mediaTitle(movie),
+      name: movie.name,
+      release_date: mediaDate(movie),
+      first_air_date: movie.first_air_date,
       vote_average: movie.vote_average,
       vote_count: movie.vote_count,
       popularity: movie.popularity,
@@ -1172,16 +1266,17 @@ function setWatchStatus(movie, status) {
       overview: movie.overview,
       poster_path: movie.poster_path,
       genre_ids: movie.genre_ids || (movie.genres || []).map((genre) => genre.id),
+      media_type: mediaTypeOf(movie),
       status,
-      savedAt: state.watchlist[movie.id]?.savedAt || new Date().toISOString(),
+      savedAt: state.watchlist[key]?.savedAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
   }
   localStorage.setItem(WATCHLIST_KEY, JSON.stringify(state.watchlist));
 }
 
-function paintWatchButton(button, movieId) {
-  const saved = state.watchlist[movieId];
+function paintWatchButton(button, movie) {
+  const saved = state.watchlist[watchlistKey(movie)];
   const card = button.closest(".movie-card");
   button.classList.toggle("is-saved", Boolean(saved));
   card?.classList.toggle("is-status-watching", saved?.status === "watching");
@@ -1203,10 +1298,13 @@ function statusLabel(status) {
 function readWatchlist() {
   try {
     const stored = JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "{}");
-    Object.keys(stored).forEach((id) => {
-      if (!stored[id].status) stored[id].status = "want";
+    const migrated = {};
+    Object.entries(stored).forEach(([key, item]) => {
+      const media_type = mediaTypeOf(item);
+      const normalized = { ...item, id: item.id || Number(key), media_type, status: item.status || "want" };
+      migrated[watchlistKey(normalized)] = normalized;
     });
-    return stored;
+    return migrated;
   } catch {
     return {};
   }
@@ -1231,9 +1329,12 @@ function savePreferencesFromFilters() {
   localStorage.setItem(PREFS_KEY, JSON.stringify(state.prefs));
 }
 
-function normalizeSort(value) {
-  if (value === "title.asc") return "original_title.asc";
-  return value || "primary_release_date.desc";
+function normalizeSort(value, mediaType = state.mediaType) {
+  const media = MEDIA_CONFIG[mediaType];
+  if (value === "title.asc") return media.titleSort;
+  if (value === "primary_release_date.desc" || value === "first_air_date.desc") return media.defaultSort;
+  if (value === "primary_release_date.asc" || value === "first_air_date.asc") return `${media.dateField}.asc`;
+  return value || media.defaultSort;
 }
 
 function posterUrl(path, size, title) {

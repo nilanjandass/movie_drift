@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, hasIndiaAvailability } = require("./ui-model.js");
+const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability } = require("./ui-model.js");
 
 test("featuredMovie chooses the most popular rated release", () => {
   const result = featuredMovie([
@@ -41,6 +41,21 @@ test("swipeDirection only changes slides after a deliberate horizontal swipe", (
   assert.equal(swipeDirection(400, 330), 1);
   assert.equal(swipeDirection(330, 400), -1);
   assert.equal(swipeDirection(400, 370), 0);
+});
+
+test("media helpers normalize movie and TV naming, dates, routes, and watchlist identity", () => {
+  const movie = { id: 21, title: "A Movie", release_date: "2026-06-01", media_type: "movie" };
+  const series = { id: 21, name: "A Series", first_air_date: "2026-06-02", media_type: "tv" };
+
+  assert.equal(mediaTypeOf(movie), "movie");
+  assert.equal(mediaTypeOf(series), "tv");
+  assert.equal(mediaTitle(movie), "A Movie");
+  assert.equal(mediaTitle(series), "A Series");
+  assert.equal(mediaDate(movie), "2026-06-01");
+  assert.equal(mediaDate(series), "2026-06-02");
+  assert.equal(mediaRoute(movie), "#/movie/21");
+  assert.equal(mediaRoute(series), "#/series/21");
+  assert.notEqual(watchlistKey(movie), watchlistKey(series));
 });
 
 test("hasIndiaAvailability recognises TMDb India provider data", () => {

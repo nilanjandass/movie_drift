@@ -34,9 +34,30 @@ function swipeDirection(startX, endX, threshold = 48) {
   return distance < 0 ? 1 : -1;
 }
 
+function mediaTypeOf(item = {}) {
+  return item.media_type === "tv" ? "tv" : "movie";
+}
+
+function mediaTitle(item = {}) {
+  return item.title || item.name || "Untitled";
+}
+
+function mediaDate(item = {}) {
+  return item.release_date || item.first_air_date || "";
+}
+
+function mediaRoute(item = {}) {
+  const segment = mediaTypeOf(item) === "tv" ? "series" : "movie";
+  return `#/${segment}/${item.id || ""}`;
+}
+
+function watchlistKey(item = {}) {
+  return `${mediaTypeOf(item)}:${item.id || ""}`;
+}
+
 function hasIndiaAvailability(movie = {}) {
   const providers = movie["watch/providers"]?.results?.IN;
   return Boolean(providers && [providers.flatrate, providers.free, providers.ads, providers.rent, providers.buy].some((list) => list?.length));
 }
 
-if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, hasIndiaAvailability };
+if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };
