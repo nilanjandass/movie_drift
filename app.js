@@ -1013,7 +1013,7 @@ async function renderDetail(movieId, mediaType = state.mediaType) {
               <option value="">Not saved</option>
               ${WATCH_STATUSES.map(([value, label]) => `<option value="${value}" ${saved?.status === value ? "selected" : ""}>${label}</option>`).join("")}
             </select>
-            <a class="ghost-button" href="${mediaType === "tv" ? "#/series" : "#/"}">Back to discovery</a>
+            <a class="icon-button" href="${mediaType === "tv" ? "#/series" : "#/"}" aria-label="Back to discovery" title="Back to discovery">&larr;</a>
           </div>
           <p class="hero-copy">${escapeHtml(movie.overview || "No synopsis is available yet.")}</p>
         </div>
@@ -1198,7 +1198,7 @@ async function renderPerson(personId) {
             <span>${escapeHtml(person.place_of_birth || "Place not listed")}</span>
           </div>
           <div class="detail-actions">
-            <a class="ghost-button" href="${state.mediaType === "tv" ? "#/series" : "#/"}">Back to discovery</a>
+            <a class="icon-button" href="${state.mediaType === "tv" ? "#/series" : "#/"}" aria-label="Back to discovery" title="Back to discovery">&larr;</a>
           </div>
           <p class="hero-copy">${escapeHtml(person.biography || "No biography is available yet.")}</p>
         </div>
