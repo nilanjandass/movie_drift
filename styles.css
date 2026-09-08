@@ -619,6 +619,32 @@ h3 {
 
 .developer-ribbon { position: fixed; right: 0; bottom: 0; left: 0; z-index: 40; min-height: 34px; padding: 8px 18px; border-top: 1px solid rgba(255,255,255,.18); color: rgba(247,248,255,.9); background: rgba(7, 10, 18, .56); box-shadow: 0 -12px 30px rgba(0,0,0,.16); backdrop-filter: blur(15px); font-size: 12px; font-weight: 800; letter-spacing: .04em; text-align: center; pointer-events: none; }
 
+.go-top-button {
+  position: fixed;
+  right: 22px;
+  bottom: 54px;
+  z-index: 35;
+  display: grid;
+  width: 42px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 7px;
+  color: var(--text);
+  background: rgba(8, 11, 21, 0.48);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.26);
+  backdrop-filter: blur(14px);
+  cursor: pointer;
+  font-size: 22px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity 180ms ease, transform 180ms ease, background 180ms ease;
+}
+
+.go-top-button.is-visible { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.go-top-button:hover { background: rgba(97, 229, 196, 0.24); }
+
 .program-section { margin-top: 28px; }
 
 .section-heading {
@@ -686,6 +712,28 @@ h3 {
 }
 
 .poster-stage { position: relative; }
+
+.preview-button {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 3;
+  display: grid;
+  width: 34px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 6px;
+  color: var(--text);
+  background: rgba(5, 8, 15, 0.66);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.preview-button:hover { background: rgba(97, 229, 196, 0.28); transform: scale(1.06); }
 
 .poster-stage::before {
   position: absolute;
@@ -1042,6 +1090,39 @@ h3 {
   display: block;
 }
 
+.detail-rail-panel { margin-top: 16px; }
+.detail-rail-shell { position: relative; }
+.detail-rail {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 3px 2px 12px;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-inline: contain;
+}
+.detail-rail::-webkit-scrollbar { display: none; }
+.detail-rail-shell .rail-arrow { opacity: 0; }
+.detail-rail-shell:hover .rail-arrow,
+.detail-rail-shell .rail-arrow:focus-visible { opacity: 1; }
+.cast-rail .cast-card { flex: 0 0 238px; min-height: 112px; scroll-snap-align: start; }
+.cast-rail .person-card { grid-template-columns: 64px minmax(0, 1fr); gap: 12px; }
+.cast-rail .person-card img { width: 64px; }
+.review-card {
+  flex: 0 0 min(360px, 84vw);
+  min-height: 168px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.18);
+  scroll-snap-align: start;
+}
+.review-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.review-card-heading span { color: var(--accent); font-size: 13px; font-weight: 900; }
+.review-card p { display: -webkit-box; overflow: hidden; margin: 12px 0 0; color: var(--muted); line-height: 1.5; -webkit-box-orient: vertical; -webkit-line-clamp: 4; }
+.related-rail .rail-movie { flex-basis: 164px; }
+
 .cast-card span,
 .cast-card small {
   margin-top: 5px;
@@ -1094,6 +1175,14 @@ h3 {
   min-height: 260px;
   place-items: center;
   text-align: center;
+}
+
+.empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 18px;
 }
 
 .compact-empty {
@@ -1247,6 +1336,8 @@ h3 {
   .status-select {
     width: 100%;
   }
+
+  .empty-actions { width: 100%; }
 
   .suggestions {
     position: static;

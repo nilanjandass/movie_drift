@@ -312,6 +312,13 @@ const prefRatingInput = document.querySelector("#prefRatingInput");
 const prefSortSelect = document.querySelector("#prefSortSelect");
 const quickLookDialog = document.querySelector("#quickLookDialog");
 const quickLookContent = document.querySelector("#quickLookContent");
+const goTopButton = document.querySelector("#goTopButton");
+
+goTopButton?.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+window.addEventListener("scroll", () => {
+  goTopButton?.classList.toggle("is-visible", window.scrollY > 520);
+}, { passive: true });
+goTopButton?.classList.toggle("is-visible", window.scrollY > 520);
 
 settingsButton.addEventListener("click", () => {
   apiKeyInput.value = state.apiKey;
@@ -754,6 +761,7 @@ function renderMovieBatch(movies, target) {
     const posterButton = card.querySelector(".poster-button");
     const watchToggle = card.querySelector(".watch-toggle");
     const score = card.querySelector(".card-score");
+    const previewButton = card.querySelector(".preview-button");
 
     poster.src = posterUrl(movie.poster_path, "w500", mediaTitle(movie));
     poster.alt = `${mediaTitle(movie)} poster`;
@@ -771,6 +779,13 @@ function renderMovieBatch(movies, target) {
     const openMedia = () => { window.location.hash = mediaRoute(movie); };
     title.addEventListener("click", openMedia);
     posterButton.addEventListener("click", openMedia);
+    if (target.id === "movieGrid") {
+      previewButton.hidden = false;
+      previewButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        showQuickLook(movie);
+      });
+    }
     card.addEventListener("mouseenter", () => card.classList.add("is-previewed"));
     card.addEventListener("mouseleave", () => card.classList.remove("is-previewed"));
     paintWatchButton(watchToggle, movie);
@@ -960,6 +975,7 @@ function movieMeta(movie) {
 
 async function renderDetail(movieId, mediaType = state.mediaType) {
   disconnectObserver();
+  window.scrollTo(0, 0);
   const media = MEDIA_CONFIG[mediaType];
   app.innerHTML = `<div class="loader">Loading ${media.singular} details...</div>`;
 
@@ -975,6 +991,8 @@ async function renderDetail(movieId, mediaType = state.mediaType) {
     const trailer = videos.find((video) => video.site === "YouTube" && video.type === "Trailer") || videos.find((video) => video.site === "YouTube");
     const providers = movie["watch/providers"]?.results?.IN || {};
     const saved = state.watchlist[watchlistKey(movie)];
+    const related = withMediaType(movie.recommendations?.results || fallbackRelatedTitles(movie.id, mediaType), mediaType).filter((item) => Number(item.id) !== Number(movie.id)).slice(0, 12);
+    const reviews = movie.reviews?.results || fallbackReviews(movie);
 
     app.innerHTML = `
       <section class="detail-hero">
@@ -1001,12 +1019,7 @@ async function renderDetail(movieId, mediaType = state.mediaType) {
       <section class="details-layout">
         <div class="detail-stack">
           ${renderTrailerPanel(trailer, videos)}
-          <div class="detail-panel">
-            <h2>Full cast</h2>
-            <div class="cast-grid">
-              ${cast.length ? cast.map((person) => renderPersonCard(person, person.character || "Role not listed")).join("") : `<p class="muted">Cast information is not available.</p>`}
-            </div>
-          </div>
+          ${renderCastPanel(cast)}
         </div>
         <aside class="detail-stack">
           ${renderProvidersPanel(providers)}
@@ -1023,11 +1036,15 @@ async function renderDetail(movieId, mediaType = state.mediaType) {
           </div>
         </aside>
       </section>
+      ${renderReviewsPanel(reviews)}
+      ${renderRelatedPanel(related, mediaType)}
     `;
 
     document.querySelector("#detailStatusSelect").addEventListener("input", (event) => {
       setWatchStatus(movie, event.target.value);
     });
+    wireDetailRails();
+    requestAnimationFrame(() => window.scrollTo(0, 0));
   } catch (error) {
     console.error(error);
     app.innerHTML = `<div class="empty-state"><div><h2>Details are unavailable.</h2><p class="muted">Check the TMDb key or return to discovery.</p><a class="primary-button" href="#/">Back to discovery</a></div></div>`;
@@ -1076,6 +1093,40 @@ function providerListed(partner, providers) {
   return [providers.flatrate, providers.rent, providers.buy, providers.free, providers.ads].flat().filter(Boolean).some((provider) => provider.provider_name.toLowerCase() === partner.toLowerCase());
 }
 
+function renderCastPanel(cast) {
+  if (!cast.length) return `<div class="detail-panel"><h2>Full cast</h2><p class="muted">Cast information is not available.</p></div>`;
+  return renderDetailRail("Full cast", cast.map((person) => renderPersonCard(person, person.character || "Role not listed")).join(""), "cast-rail", "cast");
+}
+
+function renderReviewsPanel(reviews) {
+  const cards = reviews.slice(0, 12).map((review) => {
+    const author = review.author_details?.name || review.author_details?.username || review.author || "TMDb member";
+    const rating = review.author_details?.rating;
+    return `<article class="review-card"><div class="review-card-heading"><strong>${escapeHtml(author)}</strong>${rating ? `<span>${Number(rating).toFixed(1)} / 10</span>` : ""}</div><p>${escapeHtml(review.content || "No review text was provided.")}</p></article>`;
+  }).join("");
+  return renderDetailRail("Reviews", cards || `<p class="muted">No reviews are available for this title yet.</p>`, "review-rail", "reviews");
+}
+
+function renderRelatedPanel(related, mediaType) {
+  const content = related.length
+    ? related.map((item) => `<button class="rail-movie" type="button" data-detail-route="${mediaRoute(item)}"><img src="${posterUrl(item.poster_path, "w342", mediaTitle(item))}" alt="${escapeHtml(mediaTitle(item))} poster" loading="lazy" /><span>${escapeHtml(mediaTitle(item))}</span></button>`).join("")
+    : `<p class="muted">No related ${mediaType === "tv" ? "series" : "movies"} are available yet.</p>`;
+  return renderDetailRail(`Related ${mediaType === "tv" ? "series" : "movies"}`, content, "related-rail", "related");
+}
+
+function renderDetailRail(title, content, className, railName) {
+  return `<section class="detail-panel detail-rail-panel"><div class="section-heading"><h2>${title}</h2><span>Swipe to browse</span></div><div class="detail-rail-shell"><button class="rail-arrow rail-arrow-left" type="button" aria-label="Scroll ${railName} left">‹</button><div class="detail-rail ${className}" data-detail-rail>${content}</div><button class="rail-arrow rail-arrow-right" type="button" aria-label="Scroll ${railName} right">›</button></div></section>`;
+}
+
+function wireDetailRails() {
+  app.querySelectorAll("[data-detail-route]").forEach((button) => button.addEventListener("click", () => { window.location.hash = button.dataset.detailRoute; }));
+  app.querySelectorAll(".detail-rail-shell").forEach((shell) => {
+    const rail = shell.querySelector("[data-detail-rail]");
+    shell.querySelector(".rail-arrow-left").addEventListener("click", () => rail.scrollBy({ left: -rail.clientWidth * 0.8, behavior: "smooth" }));
+    shell.querySelector(".rail-arrow-right").addEventListener("click", () => rail.scrollBy({ left: rail.clientWidth * 0.8, behavior: "smooth" }));
+  });
+}
+
 function renderPersonCard(person, subtext) {
   return `
     <a class="cast-card person-card" href="#/person/${person.id || ""}">
@@ -1095,15 +1146,26 @@ async function fetchMediaDetail(movieId, mediaType = state.mediaType) {
   const fallback = media.collection.find((movie) => movie.id === Number(movieId));
   if (!state.apiKey) {
     if (!fallback) throw new Error("Fallback detail not found");
-    return { ...fallback, media_type: mediaType, genres: FALLBACK_GENRES.filter((genre) => fallback.genre_ids.includes(genre.id)), ...(mediaType === "tv" ? FALLBACK_SERIES_DETAILS : FALLBACK_DETAILS) };
+    return { ...fallback, media_type: mediaType, genres: FALLBACK_GENRES.filter((genre) => fallback.genre_ids.includes(genre.id)), recommendations: { results: fallbackRelatedTitles(movieId, mediaType) }, reviews: { results: fallbackReviews(fallback) }, ...(mediaType === "tv" ? FALLBACK_SERIES_DETAILS : FALLBACK_DETAILS) };
   }
 
   const params = new URLSearchParams({
     api_key: state.apiKey,
-    append_to_response: "credits,videos,watch/providers",
+    append_to_response: "credits,videos,watch/providers,recommendations,reviews",
   });
   const detail = await cachedFetch(`${TMDB_BASE_URL}/${media.endpoint}/${movieId}?${params}`, `detail:${media.endpoint}:${movieId}:${params}`);
   return { ...detail, media_type: mediaType };
+}
+
+function fallbackRelatedTitles(movieId, mediaType) {
+  return MEDIA_CONFIG[mediaType].collection.filter((item) => Number(item.id) !== Number(movieId)).slice(0, 12);
+}
+
+function fallbackReviews(movie) {
+  return [
+    { author: "Movie Drift viewer", author_details: { rating: Math.max(6, Math.round(Number(movie.vote_average || 7))) }, content: `${mediaTitle(movie)} has a strong premise, a clear sense of place, and enough momentum to make it an easy recommendation.` },
+    { author: "Weekend watchlist", author_details: { rating: Math.max(6, Math.round(Number(movie.vote_average || 7) - 0.5)) }, content: "A compelling pick for viewers looking for a polished story with a memorable atmosphere." },
+  ];
 }
 
 async function renderPerson(personId) {
@@ -1198,7 +1260,7 @@ function renderWatchlist() {
 
   const root = document.querySelector("#watchlistGroups");
   if (!movies.length) {
-    root.innerHTML = `<div class="empty-state"><div><h2>No saved titles yet.</h2><p class="muted">Add movies or series from discovery or a detail page.</p><a class="primary-button" href="#/">Browse movies</a></div></div>`;
+    root.innerHTML = `<div class="empty-state"><div><h2>No saved titles yet.</h2><p class="muted">Add movies or series from discovery or a detail page.</p><div class="empty-actions"><a class="primary-button" href="#/">Browse movies</a><a class="primary-button" href="#/series">Browse series</a></div></div></div>`;
     return;
   }
 
