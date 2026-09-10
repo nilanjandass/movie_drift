@@ -268,6 +268,8 @@ const state = {
   featureGestureAbort: null,
   filterAbort: null,
   watchlist: readWatchlist(),
+  watchlistProviders: {},
+  watchlistProviderLoading: new Set(),
 };
 
 state.filters.language = state.prefs.language;
@@ -767,6 +769,8 @@ function renderMovieBatch(movies, target) {
 
     poster.src = posterUrl(movie.poster_path, "w500", mediaTitle(movie));
     poster.alt = `${mediaTitle(movie)} poster`;
+    card.dataset.genreTone = genreTone(movie);
+    card.style.setProperty("--card-backdrop", `url("${posterUrl(movie.backdrop_path || movie.poster_path, "w780", mediaTitle(movie))}")`);
     title.textContent = mediaTitle(movie);
     card.querySelector(".movie-meta").innerHTML = movieMeta(movie);
     card.querySelector(".movie-overview").textContent = movie.overview || "No synopsis is available yet.";
@@ -775,6 +779,13 @@ function renderMovieBatch(movies, target) {
     score.style.setProperty("--score", "0");
     requestAnimationFrame(() => score.style.setProperty("--score", scoreTarget));
     score.querySelector(".score-value").textContent = Number(movie.vote_average || 0).toFixed(1);
+    const availability = availabilityLabel(movie.providers);
+    if (availability) {
+      const ribbon = document.createElement("span");
+      ribbon.className = "availability-ribbon";
+      ribbon.textContent = `${availability.action} ${availability.provider}`;
+      card.querySelector(".poster-stage").appendChild(ribbon);
+    }
     if (shouldApplyRevealCard(state.revealObserver)) {
       card.classList.add("reveal-card");
       state.revealObserver.observe(card);
@@ -1260,8 +1271,14 @@ function renderWatchlist() {
   disconnectObserver();
   const movies = Object.values(state.watchlist).sort((a, b) => (b.savedAt || "").localeCompare(a.savedAt || ""));
   const grouped = WATCH_STATUSES.map(([status, label]) => [status, label, movies.filter((movie) => movie.status === status)]);
+  const queue = watchlistQueue(movies);
+  const savedKeys = new Set(movies.map((movie) => watchlistKey(movie)));
+  const related = relatedPick(movies, [...withMediaType(FALLBACK_MOVIES, "movie"), ...withMediaType(FALLBACK_SERIES, "tv")], savedKeys);
+  const relatedSource = movies.find((movie) => Number(movie.id) === Number(related?.relatedTo) && mediaTypeOf(movie) === mediaTypeOf(related)) || movies.find((movie) => Number(movie.id) === Number(related?.relatedTo));
+  const enrichedMovies = movies.map((movie) => ({ ...movie, providers: state.watchlistProviders[watchlistKey(movie)] }));
+  const enrichedGrouped = WATCH_STATUSES.map(([status, label]) => [status, label, enrichedMovies.filter((movie) => movie.status === status)]);
   app.innerHTML = `
-    <section class="hero-panel">
+    <section class="hero-panel watchlist-hero">
       <div>
         <p class="eyebrow">Personal queue</p>
         <h1>Your watchlist</h1>
@@ -1269,6 +1286,9 @@ function renderWatchlist() {
       </div>
       <div class="status-card"><strong>${movies.length} saved</strong><p class="muted">Stored locally in this browser.</p></div>
     </section>
+    ${queue.length ? `<section class="watchlist-queue" aria-label="Tonight's queue"><div class="section-heading"><p class="eyebrow">Tonight's queue</p><span class="muted">Your next ${queue.length} title${queue.length === 1 ? "" : "s"}</span></div><div class="film-strip">${queue.map((movie, index) => `<a class="queue-title" href="${mediaRoute(movie)}"><span class="queue-frame">${String(index + 1).padStart(2, "0")}</span><img src="${posterUrl(movie.poster_path, "w342", mediaTitle(movie))}" alt="" loading="lazy" /><span><strong>${escapeHtml(mediaTitle(movie))}</strong><small>${escapeHtml(statusLabel(movie.status))}</small></span></a>`).join("")}</div></section>` : ""}
+    <section class="watch-status-timeline" aria-label="Watchlist status overview">${grouped.map(([status, label, list], index) => `<div class="timeline-step timeline-step-${status}"><span class="timeline-marker" aria-hidden="true">${statusSymbol(status)}</span><span><strong>${list.length}</strong><small>${escapeHtml(label)}</small></span>${index < grouped.length - 1 ? "<i class=\"timeline-connector\" aria-hidden=\"true\"></i>" : ""}</div>`).join("")}</section>
+    ${related && relatedSource ? `<section class="watchlist-related"><div class="section-heading"><div><p class="eyebrow">Because you saved</p><h2>${escapeHtml(mediaTitle(relatedSource))}</h2></div><a class="text-link" href="${mediaRoute(related)}">View title</a></div><a class="related-pick" href="${mediaRoute(related)}"><img src="${posterUrl(related.poster_path, "w500", mediaTitle(related))}" alt="${escapeHtml(mediaTitle(related))} poster" loading="lazy" /><span><small>Local match · ${escapeHtml(genreNames(related.genre_ids) || "A related pick")}</small><strong>${escapeHtml(mediaTitle(related))}</strong><em>${Number(related.vote_average || 0).toFixed(1)} / 10</em></span></a></section>` : ""}
     <section id="watchlistGroups" class="watchlist-groups"></section>
   `;
 
@@ -1285,7 +1305,7 @@ function renderWatchlist() {
     </section>
   `).join("");
 
-  grouped.forEach(([, label, list]) => {
+  enrichedGrouped.forEach(([, label, list]) => {
     const grid = root.querySelector(`[data-watch-status="${label}"]`);
     if (list.length) {
       renderMovieBatch(list, grid);
@@ -1293,6 +1313,32 @@ function renderWatchlist() {
       grid.innerHTML = `<div class="empty-state compact-empty"><p class="muted">No titles here yet.</p></div>`;
     }
   });
+
+  void hydrateWatchlistProviders(movies);
+}
+
+async function hydrateWatchlistProviders(movies) {
+  const missing = movies.filter((movie) => {
+    const key = watchlistKey(movie);
+    return !Object.hasOwn(state.watchlistProviders, key) && !state.watchlistProviderLoading.has(key);
+  });
+  if (!missing.length) return;
+
+  await Promise.all(missing.map(async (movie) => {
+    const key = watchlistKey(movie);
+    state.watchlistProviderLoading.add(key);
+    try {
+      const detail = await fetchMediaDetail(movie.id, mediaTypeOf(movie));
+      state.watchlistProviders[key] = detail["watch/providers"]?.results?.IN || {};
+    } catch (error) {
+      console.warn("Watchlist provider data is unavailable", error);
+      state.watchlistProviders[key] = {};
+    } finally {
+      state.watchlistProviderLoading.delete(key);
+    }
+  }));
+
+  if (state.route === "watchlist") renderWatchlist();
 }
 
 async function loadGenres() {
