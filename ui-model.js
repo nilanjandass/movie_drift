@@ -23,6 +23,11 @@ function shouldRenderFeatured({ requestedPage, query }) {
   return requestedPage === 1 && !query;
 }
 
+function discoveryRouteKind(hash = "#/") {
+  if (hash === "#/people") return "people";
+  return hash === "#/series" ? "tv" : "movie";
+}
+
 function nextCarouselIndex(current, direction, total) {
   if (!total) return 0;
   return (current + direction + total) % total;
@@ -116,4 +121,4 @@ function hasIndiaAvailability(movie = {}) {
   return Boolean(providers && [providers.flatrate, providers.free, providers.ads, providers.rent, providers.buy].some((list) => list?.length));
 }
 
-if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };
+if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, discoveryRouteKind, nextCarouselIndex, swipeDirection, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };

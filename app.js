@@ -408,10 +408,19 @@ function route() {
     return;
   }
 
+  if (hash === "#/people") {
+    state.route = "people-discovery";
+    state.movieId = null;
+    state.personId = null;
+    setActiveNav("people");
+    renderPeoplePage();
+    return;
+  }
+
   state.route = "home";
   state.movieId = null;
   state.personId = null;
-  state.mediaType = hash === "#/series" ? "tv" : "movie";
+  state.mediaType = discoveryRouteKind(hash);
   ensureMediaSort();
   setActiveNav(state.mediaType);
   renderHome();
@@ -437,6 +446,7 @@ async function renderHome() {
     <nav class="media-switch" aria-label="Discover content type">
       <a href="#/" class="media-switch-link ${state.mediaType === "movie" ? "is-active" : ""}">Discover Movies</a>
       <a href="#/series" class="media-switch-link ${state.mediaType === "tv" ? "is-active" : ""}">Discover Series</a>
+      <a href="#/people" class="media-switch-link">Discover People</a>
     </nav>
     <section class="cinema-stage" id="featuredSpotlight">
       <div class="feature-copy">
@@ -982,8 +992,21 @@ async function renderPeopleDiscovery(target) {
   if (state.route !== "home" || state.mediaType !== "tv" || !target || !people.length) return;
   const section = document.createElement("section");
   section.className = "program-section people-discovery";
-  section.innerHTML = `<div class="section-heading"><h2>Discover People</h2><span>Cast and creators to explore</span></div><div class="people-rail">${people.slice(0, 16).map((person) => `<a class="person-rail-card" href="#/person/${person.id}"><img src="${profileUrl(person.profile_path, person.name)}" alt="" loading="lazy" /><span><strong>${escapeHtml(person.name || "Cast member")}</strong><small>${escapeHtml(person.known_for_department || "Film and television")}</small></span></a>`).join("")}</div>`;
+  section.innerHTML = `<div class="section-heading"><h2>Discover People</h2><span>Cast and creators to explore</span></div>${renderPeopleRail(people)}`;
   target.appendChild(section);
+}
+
+async function renderPeoplePage() {
+  disconnectObserver();
+  app.innerHTML = `<nav class="media-switch" aria-label="Discover content type"><a href="#/" class="media-switch-link">Discover Movies</a><a href="#/series" class="media-switch-link">Discover Series</a><a href="#/people" class="media-switch-link is-active">Discover People</a></nav><section class="hero-panel people-hero"><div><p class="eyebrow">Cast and creators</p><h1>Discover People</h1><p class="hero-copy">Explore the actors, directors, and filmmakers behind the stories you want to watch next.</p></div></section><section class="program-section" id="peopleDiscoveryPage"><div class="loader">Loading people...</div></section>`;
+  const people = await fetchPopularPeople();
+  const target = document.querySelector("#peopleDiscoveryPage");
+  if (state.route !== "people-discovery" || !target) return;
+  target.innerHTML = `<div class="section-heading"><h2>Popular people</h2><span>From TMDb</span></div>${renderPeopleRail(people)}`;
+}
+
+function renderPeopleRail(people) {
+  return `<div class="people-rail">${people.slice(0, 20).map((person) => `<a class="person-rail-card" href="#/person/${person.id}"><img src="${profileUrl(person.profile_path, person.name)}" alt="" loading="lazy" /><span><strong>${escapeHtml(person.name || "Cast member")}</strong><small>${escapeHtml(person.known_for_department || "Film and television")}</small></span></a>`).join("")}</div>`;
 }
 
 async function fetchPopularPeople() {

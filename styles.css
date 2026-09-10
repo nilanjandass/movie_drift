@@ -451,7 +451,7 @@ h3 {
   right: 0;
   z-index: 35;
   width: min(100%, 980px);
-  padding: 14px;
+  padding: 18px 14px;
   border: 1px solid var(--stroke);
   border-radius: var(--radius);
   background: rgba(17, 20, 31, 0.9);
@@ -740,8 +740,8 @@ h3 {
 .preview-button {
   position: absolute;
   right: 10px;
-  bottom: 10px;
-  z-index: 3;
+  bottom: 46px;
+  z-index: 5;
   display: grid;
   width: 34px;
   aspect-ratio: 1;
@@ -1455,7 +1455,7 @@ h3 {
   }
 
   .media-switch { width: 100%; }
-  .media-switch-link { flex: 1; padding: 0 8px; text-align: center; }
+  .media-switch-link { flex: 1; padding: 0 6px; font-size: 12px; text-align: center; white-space: nowrap; }
 
   .filters {
     grid-template-columns: 1fr;

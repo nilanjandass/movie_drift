@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus } = require("./ui-model.js");
+const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus, discoveryRouteKind } = require("./ui-model.js");
 
 test("featuredMovie chooses the most popular rated release", () => {
   const result = featuredMovie([
@@ -30,6 +30,12 @@ test("shouldRenderFeatured is tied to the requested first discovery page", () =>
   assert.equal(shouldRenderFeatured({ requestedPage: 1, query: "" }), true);
   assert.equal(shouldRenderFeatured({ requestedPage: 2, query: "" }), false);
   assert.equal(shouldRenderFeatured({ requestedPage: 1, query: "arrival" }), false);
+});
+
+test("discoveryRouteKind recognises the People discovery destination", () => {
+  assert.equal(discoveryRouteKind("#/people"), "people");
+  assert.equal(discoveryRouteKind("#/series"), "tv");
+  assert.equal(discoveryRouteKind("#/"), "movie");
 });
 
 test("nextCarouselIndex wraps in both directions", () => {
