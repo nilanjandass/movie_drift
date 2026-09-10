@@ -775,8 +775,10 @@ function renderMovieBatch(movies, target) {
     score.style.setProperty("--score", "0");
     requestAnimationFrame(() => score.style.setProperty("--score", scoreTarget));
     score.querySelector(".score-value").textContent = Number(movie.vote_average || 0).toFixed(1);
-    card.classList.add("reveal-card");
-    state.revealObserver?.observe(card);
+    if (shouldApplyRevealCard(state.revealObserver)) {
+      card.classList.add("reveal-card");
+      state.revealObserver.observe(card);
+    }
 
     const openMedia = () => { window.location.hash = mediaRoute(movie); };
     title.addEventListener("click", openMedia);

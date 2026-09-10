@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability } = require("./ui-model.js");
+const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, shouldApplyRevealCard } = require("./ui-model.js");
 
 test("featuredMovie chooses the most popular rated release", () => {
   const result = featuredMovie([
@@ -41,6 +41,11 @@ test("swipeDirection only changes slides after a deliberate horizontal swipe", (
   assert.equal(swipeDirection(400, 330), 1);
   assert.equal(swipeDirection(330, 400), -1);
   assert.equal(swipeDirection(400, 370), 0);
+});
+
+test("cards remain visible when their route has no scroll-reveal observer", () => {
+  assert.equal(shouldApplyRevealCard(null), false);
+  assert.equal(shouldApplyRevealCard({ observe() {} }), true);
 });
 
 test("media helpers normalize movie and TV naming, dates, routes, and watchlist identity", () => {

@@ -34,6 +34,10 @@ function swipeDirection(startX, endX, threshold = 48) {
   return distance < 0 ? 1 : -1;
 }
 
+function shouldApplyRevealCard(revealObserver) {
+  return Boolean(revealObserver && typeof revealObserver.observe === "function");
+}
+
 function mediaTypeOf(item = {}) {
   return item.media_type === "tv" ? "tv" : "movie";
 }
@@ -60,4 +64,4 @@ function hasIndiaAvailability(movie = {}) {
   return Boolean(providers && [providers.flatrate, providers.free, providers.ads, providers.rent, providers.buy].some((list) => list?.length));
 }
 
-if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };
+if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, shouldApplyRevealCard, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };
