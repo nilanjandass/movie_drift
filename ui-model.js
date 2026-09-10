@@ -38,6 +38,54 @@ function shouldApplyRevealCard(revealObserver) {
   return Boolean(revealObserver && typeof revealObserver.observe === "function");
 }
 
+function watchlistQueue(items = [], limit = 3) {
+  const statusRank = { watching: 0, want: 1, watched: 2 };
+  return items
+    .slice()
+    .sort((left, right) => (statusRank[left.status] ?? 3) - (statusRank[right.status] ?? 3)
+      || (right.updatedAt || right.savedAt || "").localeCompare(left.updatedAt || left.savedAt || ""))
+    .slice(0, limit);
+}
+
+function relatedPick(sourceItems = [], candidates = [], savedKeys = new Set()) {
+  const matches = sourceItems.flatMap((source) => candidates
+    .filter((candidate) => candidate?.id && candidate.id !== source.id && !savedKeys.has(watchlistKey(candidate)))
+    .map((candidate) => ({
+      candidate,
+      source,
+      sharedGenres: (candidate.genre_ids || []).filter((id) => (source.genre_ids || []).includes(id)).length,
+      sameType: mediaTypeOf(candidate) === mediaTypeOf(source),
+    }))
+    .filter((match) => match.sharedGenres));
+
+  matches.sort((left, right) => Number(right.sameType) - Number(left.sameType)
+    || right.sharedGenres - left.sharedGenres
+    || Number(right.candidate.vote_average || 0) - Number(left.candidate.vote_average || 0)
+    || Number(right.candidate.popularity || 0) - Number(left.candidate.popularity || 0));
+
+  return matches.length ? { ...matches[0].candidate, relatedTo: matches[0].source.id } : null;
+}
+
+function availabilityLabel(providers = {}) {
+  const providerTypes = [
+    ["flatrate", "Stream on"],
+    ["free", "Free on"],
+    ["ads", "With ads on"],
+    ["rent", "Rent on"],
+    ["buy", "Buy on"],
+  ];
+  const [key, action] = providerTypes.find(([type]) => providers[type]?.length) || [];
+  return key ? { action, provider: providers[key][0].provider_name } : null;
+}
+
+function genreTone(item = {}) {
+  const genres = item.genre_ids || [];
+  if (genres.includes(27) || genres.includes(53)) return "suspense";
+  if (genres.includes(10749) || genres.includes(18)) return "romance";
+  if (genres.includes(878) || genres.includes(16)) return "future";
+  return "neutral";
+}
+
 function mediaTypeOf(item = {}) {
   return item.media_type === "tv" ? "tv" : "movie";
 }
@@ -64,4 +112,4 @@ function hasIndiaAvailability(movie = {}) {
   return Boolean(providers && [providers.flatrate, providers.free, providers.ads, providers.rent, providers.buy].some((list) => list?.length));
 }
 
-if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, shouldApplyRevealCard, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };
+if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };

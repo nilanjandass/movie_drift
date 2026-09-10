@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, shouldApplyRevealCard } = require("./ui-model.js");
+const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone } = require("./ui-model.js");
 
 test("featuredMovie chooses the most popular rated release", () => {
   const result = featuredMovie([
@@ -46,6 +46,40 @@ test("swipeDirection only changes slides after a deliberate horizontal swipe", (
 test("cards remain visible when their route has no scroll-reveal observer", () => {
   assert.equal(shouldApplyRevealCard(null), false);
   assert.equal(shouldApplyRevealCard({ observe() {} }), true);
+});
+
+test("watchlistQueue prioritises active titles and returns at most three", () => {
+  const result = watchlistQueue([
+    { id: 1, status: "want", updatedAt: "2026-09-01" },
+    { id: 2, status: "watched", updatedAt: "2026-09-03" },
+    { id: 3, status: "watching", updatedAt: "2026-09-02" },
+    { id: 4, status: "want", updatedAt: "2026-09-04" },
+  ]);
+
+  assert.deepEqual(result.map((item) => item.id), [3, 4, 1]);
+});
+
+test("relatedPick favours shared genres in the same media type and excludes saved titles", () => {
+  const source = [{ id: 10, media_type: "movie", genre_ids: [18, 10749] }];
+  const candidates = [
+    { id: 11, media_type: "tv", genre_ids: [18, 10749], vote_average: 10, popularity: 100 },
+    { id: 12, media_type: "movie", genre_ids: [18], vote_average: 7, popularity: 20 },
+    { id: 13, media_type: "movie", genre_ids: [18, 10749], vote_average: 8, popularity: 30 },
+  ];
+
+  assert.equal(relatedPick(source, candidates, new Set(["movie:12"])).id, 13);
+});
+
+test("availabilityLabel uses India provider priority and keeps its action explicit", () => {
+  assert.deepEqual(availabilityLabel({ rent: [{ provider_name: "Apple TV" }], flatrate: [{ provider_name: "Netflix" }] }), { action: "Stream on", provider: "Netflix" });
+  assert.deepEqual(availabilityLabel({ ads: [{ provider_name: "JioHotstar" }] }), { action: "With ads on", provider: "JioHotstar" });
+  assert.equal(availabilityLabel({}), null);
+});
+
+test("genreTone gives suspense precedence over romance and uses a neutral fallback", () => {
+  assert.equal(genreTone({ genre_ids: [27, 10749] }), "suspense");
+  assert.equal(genreTone({ genre_ids: [878] }), "future");
+  assert.equal(genreTone({ genre_ids: [99] }), "neutral");
 });
 
 test("media helpers normalize movie and TV naming, dates, routes, and watchlist identity", () => {
