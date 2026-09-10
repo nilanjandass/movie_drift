@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone } = require("./ui-model.js");
+const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus } = require("./ui-model.js");
 
 test("featuredMovie chooses the most popular rated release", () => {
   const result = featuredMovie([
@@ -68,6 +68,25 @@ test("relatedPick favours shared genres in the same media type and excludes save
   ];
 
   assert.equal(relatedPick(source, candidates, new Set(["movie:12"])).id, 13);
+});
+
+test("relatedPick preserves the exact typed source identity for its heading", () => {
+  const result = relatedPick(
+    [{ id: 21, media_type: "tv", genre_ids: [18] }, { id: 21, media_type: "movie", genre_ids: [27] }],
+    [{ id: 22, media_type: "tv", genre_ids: [18], vote_average: 8, popularity: 40 }],
+  );
+
+  assert.equal(result.relatedToKey, "tv:21");
+});
+
+test("clearWatchlistStatus removes only entries in the requested watchlist group", () => {
+  const result = clearWatchlistStatus({
+    "movie:1": { id: 1, media_type: "movie", status: "want" },
+    "tv:2": { id: 2, media_type: "tv", status: "watching" },
+    "movie:3": { id: 3, media_type: "movie", status: "want" },
+  }, "want");
+
+  assert.deepEqual(Object.keys(result), ["tv:2"]);
 });
 
 test("availabilityLabel uses India provider priority and keeps its action explicit", () => {

@@ -39,6 +39,20 @@
       <div class="review-dialog-content" id="reviewDialogContent"></div>
     </dialog>
 
+    <dialog class="glass-dialog confirmation-dialog" id="watchlistClearDialog" aria-labelledby="watchlistClearTitle">
+      <form method="dialog" class="settings-form">
+        <div>
+          <p class="eyebrow">Watchlist</p>
+          <h2 id="watchlistClearTitle">Clear this section?</h2>
+          <p class="muted" id="watchlistClearMessage"></p>
+        </div>
+        <div class="dialog-actions">
+          <button class="ghost-button" value="cancel">Keep titles</button>
+          <button class="clear-button" id="confirmWatchlistClear" type="button">Clear all</button>
+        </div>
+      </form>
+    </dialog>
+
     <footer class="site-footer">
       Movie and series data are provided by TMDb. This product uses the TMDb API but is not endorsed or certified by TMDb.
     </footer>
@@ -68,10 +82,6 @@
           </ol>
         </section>
         <div class="preferences-grid">
-          <label class="field">
-            <span>Streaming region</span>
-            <input id="regionPreference" type="text" value="India" disabled />
-          </label>
           <label class="field">
             <span>Default language</span>
             <select id="prefLanguageSelect"></select>

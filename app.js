@@ -185,6 +185,9 @@ const FALLBACK_PEOPLE = {
   },
 };
 
+const FALLBACK_DISCOVERY_PEOPLE = [...FALLBACK_DETAILS.credits.cast, ...FALLBACK_DETAILS.credits.crew]
+  .map((person) => ({ ...person, known_for_department: person.job || "Acting" }));
+
 const LANGUAGES = [
   ["", "Any language"],
   ["en", "English"],
@@ -253,7 +256,7 @@ const state = {
     minRating: "",
     sortBy: "primary_release_date.desc",
     query: "",
-    indiaAvailable: false,
+    indiaAvailable: true,
   },
   page: 1,
   totalPages: 1,
@@ -270,6 +273,9 @@ const state = {
   watchlist: readWatchlist(),
   watchlistProviders: {},
   watchlistProviderLoading: new Set(),
+  discoveryProviders: {},
+  discoveryProviderLoading: new Set(),
+  filterHistoryOpen: false,
 };
 
 state.filters.language = state.prefs.language;
@@ -317,6 +323,9 @@ const quickLookContent = document.querySelector("#quickLookContent");
 const reviewDialog = document.querySelector("#reviewDialog");
 const reviewDialogContent = document.querySelector("#reviewDialogContent");
 const goTopButton = document.querySelector("#goTopButton");
+const watchlistClearDialog = document.querySelector("#watchlistClearDialog");
+const watchlistClearMessage = document.querySelector("#watchlistClearMessage");
+const confirmWatchlistClearButton = document.querySelector("#confirmWatchlistClear");
 
 goTopButton?.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
 window.addEventListener("scroll", () => {
@@ -358,6 +367,7 @@ route();
 
 function route() {
   const hash = window.location.hash || "#/";
+  state.filterHistoryOpen = false;
   const detailMatch = hash.match(/^#\/movie\/(\d+)/);
   const seriesDetailMatch = hash.match(/^#\/series\/(\d+)/);
   const personMatch = hash.match(/^#\/person\/(\d+)/);
@@ -575,15 +585,25 @@ function wireFilters() {
   const { signal } = state.filterAbort;
 
   let closeTimer = null;
-  const setPopoverOpen = (isOpen) => {
+  const isMobileFilter = () => window.matchMedia("(max-width: 620px)").matches;
+  const setPopoverOpen = (isOpen, fromPopstate = false) => {
     clearTimeout(closeTimer);
     toggle.setAttribute("aria-expanded", String(isOpen));
     if (isOpen) {
+      if (isMobileFilter() && !state.filterHistoryOpen) {
+        history.pushState({ ...history.state, movieDriftFilter: true }, "", window.location.href);
+        state.filterHistoryOpen = true;
+      }
       popover.classList.remove("is-hidden", "is-closing");
       requestAnimationFrame(() => popover.classList.add("is-open"));
       popover.querySelector("select, input")?.focus();
       return;
     }
+    if (state.filterHistoryOpen && !fromPopstate) {
+      history.back();
+      return;
+    }
+    state.filterHistoryOpen = false;
     popover.classList.remove("is-open");
     popover.classList.add("is-closing");
     closeTimer = setTimeout(() => {
@@ -610,7 +630,7 @@ function wireFilters() {
   }, 250), { signal });
 
   clear.addEventListener("click", () => {
-    state.filters = { language: "", genre: "", fromYear: "", toYear: "", minRating: "", sortBy: defaultSort(), query: state.filters.query, indiaAvailable: false };
+    state.filters = { language: "", genre: "", fromYear: "", toYear: "", minRating: "", sortBy: defaultSort(), query: state.filters.query, indiaAvailable: true };
     savePreferencesFromFilters();
     form.elements.language.value = "";
     form.elements.genre.value = "";
@@ -618,7 +638,7 @@ function wireFilters() {
     form.elements.toYear.value = "";
     form.elements.minRating.value = "";
     form.elements.sortBy.value = defaultSort();
-    form.elements.indiaAvailable.checked = false;
+    form.elements.indiaAvailable.checked = true;
     refreshHome();
   }, { signal });
 
@@ -628,6 +648,10 @@ function wireFilters() {
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") setPopoverOpen(false);
+  }, { signal });
+
+  window.addEventListener("popstate", () => {
+    if (state.filterHistoryOpen) setPopoverOpen(false, true);
   }, { signal });
 }
 
@@ -662,6 +686,7 @@ async function loadNextPage() {
     const grid = document.querySelector("#movieGrid");
     if (requestedPage === 1) grid.innerHTML = "";
     renderMovieBatch(normalized, grid);
+    void hydrateDiscoveryProviders(normalized);
     if (shouldRenderFeatured({ requestedPage, query: state.filters.query })) {
       renderFeaturedSpotlight(state.movies);
       renderDiscoveryRails(state.movies);
@@ -770,6 +795,7 @@ function renderMovieBatch(movies, target) {
     poster.src = posterUrl(movie.poster_path, "w500", mediaTitle(movie));
     poster.alt = `${mediaTitle(movie)} poster`;
     card.dataset.genreTone = genreTone(movie);
+    card.dataset.mediaKey = watchlistKey(movie);
     card.style.setProperty("--card-backdrop", `url("${posterUrl(movie.backdrop_path || movie.poster_path, "w780", mediaTitle(movie))}")`);
     title.textContent = mediaTitle(movie);
     card.querySelector(".movie-meta").innerHTML = movieMeta(movie);
@@ -779,7 +805,7 @@ function renderMovieBatch(movies, target) {
     score.style.setProperty("--score", "0");
     requestAnimationFrame(() => score.style.setProperty("--score", scoreTarget));
     score.querySelector(".score-value").textContent = Number(movie.vote_average || 0).toFixed(1);
-    const availability = availabilityLabel(movie.providers);
+    const availability = availabilityLabel(movie.providers || state.discoveryProviders[watchlistKey(movie)]);
     if (availability) {
       const ribbon = document.createElement("span");
       ribbon.className = "availability-ribbon";
@@ -948,6 +974,28 @@ function renderDiscoveryRails(movies) {
     shell.querySelector(".rail-arrow-left").addEventListener("click", () => rail.scrollBy({ left: -rail.clientWidth * 0.8, behavior: "smooth" }));
     shell.querySelector(".rail-arrow-right").addEventListener("click", () => rail.scrollBy({ left: rail.clientWidth * 0.8, behavior: "smooth" }));
   });
+  if (state.mediaType === "tv") void renderPeopleDiscovery(target);
+}
+
+async function renderPeopleDiscovery(target) {
+  const people = await fetchPopularPeople();
+  if (state.route !== "home" || state.mediaType !== "tv" || !target || !people.length) return;
+  const section = document.createElement("section");
+  section.className = "program-section people-discovery";
+  section.innerHTML = `<div class="section-heading"><h2>Discover People</h2><span>Cast and creators to explore</span></div><div class="people-rail">${people.slice(0, 16).map((person) => `<a class="person-rail-card" href="#/person/${person.id}"><img src="${profileUrl(person.profile_path, person.name)}" alt="" loading="lazy" /><span><strong>${escapeHtml(person.name || "Cast member")}</strong><small>${escapeHtml(person.known_for_department || "Film and television")}</small></span></a>`).join("")}</div>`;
+  target.appendChild(section);
+}
+
+async function fetchPopularPeople() {
+  if (!state.apiKey) return FALLBACK_DISCOVERY_PEOPLE;
+  try {
+    const params = new URLSearchParams({ api_key: state.apiKey, page: "1" });
+    const data = await cachedFetch(`${TMDB_BASE_URL}/person/popular?${params}`, `people:popular:${params}`);
+    return data.results || FALLBACK_DISCOVERY_PEOPLE;
+  } catch (error) {
+    console.warn("Using fallback people", error);
+    return FALLBACK_DISCOVERY_PEOPLE;
+  }
 }
 
 function fillRail(movies) {
@@ -1076,7 +1124,6 @@ function renderTrailerPanel(trailer) {
       <div class="video-frame">
         <iframe title="${escapeHtml(trailer.name || "Trailer")}" src="https://www.youtube.com/embed/${encodeURIComponent(trailer.key)}?controls=1&rel=0&modestbranding=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe>
       </div>
-      <p class="muted video-note">Use the player controls to play, pause, or enter fullscreen from the control bar on the right.</p>
     </div>
   `;
 }
@@ -1274,7 +1321,7 @@ function renderWatchlist() {
   const queue = watchlistQueue(movies);
   const savedKeys = new Set(movies.map((movie) => watchlistKey(movie)));
   const related = relatedPick(movies, [...withMediaType(FALLBACK_MOVIES, "movie"), ...withMediaType(FALLBACK_SERIES, "tv")], savedKeys);
-  const relatedSource = movies.find((movie) => Number(movie.id) === Number(related?.relatedTo) && mediaTypeOf(movie) === mediaTypeOf(related)) || movies.find((movie) => Number(movie.id) === Number(related?.relatedTo));
+  const relatedSource = movies.find((movie) => watchlistKey(movie) === related?.relatedToKey);
   const enrichedMovies = movies.map((movie) => ({ ...movie, providers: state.watchlistProviders[watchlistKey(movie)] }));
   const enrichedGrouped = WATCH_STATUSES.map(([status, label]) => [status, label, enrichedMovies.filter((movie) => movie.status === status)]);
   app.innerHTML = `
@@ -1300,7 +1347,7 @@ function renderWatchlist() {
 
   root.innerHTML = grouped.map(([status, label, list]) => `
     <section>
-      <div class="toolbar"><h2 class="watch-status-heading watch-status-${status}"><span aria-hidden="true">${statusSymbol(status)}</span>${label}</h2><span class="pill">${list.length}</span></div>
+      <div class="toolbar"><h2 class="watch-status-heading watch-status-${status}"><span aria-hidden="true">${statusSymbol(status)}</span>${label}</h2><div class="watchlist-group-actions"><span class="pill">${list.length}</span>${list.length ? `<button class="clear-button clear-watchlist-group" type="button" data-clear-watch-status="${status}">Clear all</button>` : ""}</div></div>
       <div class="movie-grid" data-watch-status="${label}"></div>
     </section>
   `).join("");
@@ -1314,7 +1361,23 @@ function renderWatchlist() {
     }
   });
 
+  root.querySelectorAll("[data-clear-watch-status]").forEach((button) => {
+    button.addEventListener("click", () => requestWatchlistClear(button.dataset.clearWatchStatus));
+  });
+
   void hydrateWatchlistProviders(movies);
+}
+
+function requestWatchlistClear(status) {
+  if (!watchlistClearDialog || !watchlistClearMessage || !confirmWatchlistClearButton) return;
+  watchlistClearMessage.textContent = `Clear every title from ${statusLabel(status)}? This cannot be undone.`;
+  confirmWatchlistClearButton.onclick = () => {
+    state.watchlist = clearWatchlistStatus(state.watchlist, status);
+    localStorage.setItem(WATCHLIST_KEY, JSON.stringify(state.watchlist));
+    watchlistClearDialog.close();
+    renderWatchlist();
+  };
+  watchlistClearDialog.showModal();
 }
 
 async function hydrateWatchlistProviders(movies) {
@@ -1339,6 +1402,38 @@ async function hydrateWatchlistProviders(movies) {
   }));
 
   if (state.route === "watchlist") renderWatchlist();
+}
+
+async function hydrateDiscoveryProviders(movies) {
+  const missing = movies.filter((movie) => {
+    const key = watchlistKey(movie);
+    return !Object.hasOwn(state.discoveryProviders, key) && !state.discoveryProviderLoading.has(key);
+  });
+  if (!missing.length) return;
+
+  await Promise.all(missing.map(async (movie) => {
+    const key = watchlistKey(movie);
+    state.discoveryProviderLoading.add(key);
+    try {
+      const detail = await fetchMediaDetail(movie.id, mediaTypeOf(movie));
+      state.discoveryProviders[key] = detail["watch/providers"]?.results?.IN || {};
+    } catch (error) {
+      console.warn("Discovery provider data is unavailable", error);
+      state.discoveryProviders[key] = {};
+    } finally {
+      state.discoveryProviderLoading.delete(key);
+    }
+  }));
+
+  document.querySelectorAll(".movie-card[data-media-key]").forEach((card) => {
+    const availability = availabilityLabel(state.discoveryProviders[card.dataset.mediaKey]);
+    const stage = card.querySelector(".poster-stage");
+    if (!availability || !stage || stage.querySelector(".availability-ribbon")) return;
+    const ribbon = document.createElement("span");
+    ribbon.className = "availability-ribbon";
+    ribbon.textContent = `${availability.action} ${availability.provider}`;
+    stage.appendChild(ribbon);
+  });
 }
 
 async function loadGenres() {

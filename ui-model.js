@@ -63,7 +63,11 @@ function relatedPick(sourceItems = [], candidates = [], savedKeys = new Set()) {
     || Number(right.candidate.vote_average || 0) - Number(left.candidate.vote_average || 0)
     || Number(right.candidate.popularity || 0) - Number(left.candidate.popularity || 0));
 
-  return matches.length ? { ...matches[0].candidate, relatedTo: matches[0].source.id } : null;
+  return matches.length ? { ...matches[0].candidate, relatedToKey: watchlistKey(matches[0].source) } : null;
+}
+
+function clearWatchlistStatus(watchlist = {}, status) {
+  return Object.fromEntries(Object.entries(watchlist).filter(([, item]) => item.status !== status));
 }
 
 function availabilityLabel(providers = {}) {
@@ -112,4 +116,4 @@ function hasIndiaAvailability(movie = {}) {
   return Boolean(providers && [providers.flatrate, providers.free, providers.ads, providers.rent, providers.buy].some((list) => list?.length));
 }
 
-if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };
+if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };
