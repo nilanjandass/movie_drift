@@ -775,6 +775,26 @@ h3 {
   pointer-events: none;
 }
 
+.availability-ribbon {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  z-index: 4;
+  overflow: hidden;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  color: var(--text);
+  background: rgba(5, 7, 14, 0.76);
+  backdrop-filter: blur(10px);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .card-score {
   position: absolute;
   top: 10px;
@@ -804,6 +824,31 @@ h3 {
 .movie-card.is-previewed .poster-stage::before,
 .movie-card:focus-within .poster-stage::before { opacity: 0.78; transform: scale(1); }
 
+.movie-card::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: linear-gradient(0deg, rgba(5, 7, 14, 0.88), rgba(5, 7, 14, 0.12)), var(--card-backdrop);
+  background-position: center;
+  background-size: cover;
+  content: "";
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease;
+}
+
+.movie-card > * { position: relative; z-index: 1; }
+.movie-card:focus-within::after { opacity: 0.34; }
+.movie-card[data-genre-tone="suspense"] .movie-title { font-family: "Arial Narrow", Impact, sans-serif; letter-spacing: 0.045em; text-transform: uppercase; }
+.movie-card[data-genre-tone="romance"] .movie-title { font-family: Georgia, "Times New Roman", serif; font-size: 18px; letter-spacing: 0.01em; }
+.movie-card[data-genre-tone="future"] .movie-title { font-family: "SFMono-Regular", Consolas, monospace; font-size: 14px; letter-spacing: 0.04em; }
+.movie-card[data-genre-tone="future"] .movie-meta span { border-color: rgba(97, 229, 196, 0.36); }
+
+@media (hover: hover) and (min-width: 621px) {
+  .movie-card.is-previewed::after { opacity: 0.34; }
+  .movie-card.is-previewed .movie-card-body { background: linear-gradient(0deg, rgba(5, 7, 14, 0.8), rgba(5, 7, 14, 0.2)); }
+}
+
 .movie-card.is-status-watching .watch-toggle { color: #071312; background: var(--accent-2); }
 .movie-card.is-status-watched .watch-toggle { color: #071312; background: var(--accent); }
 
@@ -811,6 +856,46 @@ h3 {
 .watch-status-heading span { display: grid; width: 28px; aspect-ratio: 1; place-items: center; border-radius: 50%; color: #071312; background: var(--accent); font-size: 16px; }
 .watch-status-watching span { background: var(--accent-2); }
 .watch-status-want span { color: var(--text); background: rgba(255, 255, 255, 0.16); }
+
+.watchlist-hero { position: relative; isolation: isolate; overflow: hidden; }
+.watchlist-hero::before,
+.watchlist-hero::after { position: absolute; inset: 0; z-index: 0; content: ""; pointer-events: none; }
+.watchlist-hero > * { position: relative; z-index: 1; }
+.watchlist-hero::before { background-image: radial-gradient(rgba(255, 255, 255, 0.22) 0.55px, transparent 0.7px); background-size: 5px 5px; mix-blend-mode: soft-light; opacity: 0.2; }
+.watchlist-hero::after { background: radial-gradient(circle at 90% 12%, rgba(255, 203, 107, 0.26), transparent 34%), linear-gradient(110deg, transparent 55%, rgba(97, 229, 196, 0.12)); }
+
+.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+.section-heading h2,
+.section-heading .eyebrow { margin: 0; }
+.watchlist-queue,
+.watchlist-related,
+.watch-status-timeline { min-width: 0; padding: 14px; border: 1px solid var(--stroke); border-radius: var(--radius); background: linear-gradient(145deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.045)); box-shadow: var(--shadow); }
+.film-strip { display: flex; gap: 10px; margin-top: 12px; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 3px; scroll-snap-type: x mandatory; }
+.queue-title { display: grid; min-width: 240px; grid-template-columns: 24px 42px minmax(0, 1fr); align-items: center; gap: 9px; padding: 7px; border: 1px solid rgba(255, 255, 255, 0.13); border-radius: 6px; background: rgba(4, 7, 14, 0.34); scroll-snap-align: start; }
+.queue-title:hover,
+.queue-title:focus-visible { border-color: rgba(255, 203, 107, 0.72); }
+.queue-title img { width: 42px; aspect-ratio: 2 / 3; border-radius: 3px; object-fit: cover; }
+.queue-title span:last-child { display: grid; gap: 2px; min-width: 0; }
+.queue-title strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue-title small { color: var(--muted); font-weight: 700; }
+.queue-frame { color: var(--accent-2); font-size: 11px; font-weight: 900; letter-spacing: 0.08em; }
+.watch-status-timeline { display: flex; align-items: stretch; gap: 8px; }
+.timeline-step { display: flex; min-width: 0; flex: 1; align-items: center; gap: 8px; }
+.timeline-step > span:not(.timeline-marker) { display: grid; gap: 2px; min-width: 0; }
+.timeline-step strong { font-size: 20px; }
+.timeline-step small { color: var(--muted); font-size: 11px; font-weight: 800; }
+.timeline-marker { display: grid; width: 28px; flex: 0 0 28px; aspect-ratio: 1; place-items: center; border-radius: 50%; color: #071312; background: var(--accent); font-weight: 900; }
+.timeline-step-want .timeline-marker { color: var(--text); background: rgba(255,255,255,.16); }
+.timeline-step-watching .timeline-marker { background: var(--accent-2); }
+.timeline-connector { height: 1px; min-width: 12px; flex: 1; background: linear-gradient(90deg, var(--accent), rgba(255,255,255,.16)); }
+.watchlist-related { display: grid; gap: 12px; }
+.related-pick { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.13); border-radius: 6px; background: rgba(4, 7, 14, 0.32); }
+.related-pick:hover,
+.related-pick:focus-visible { border-color: rgba(97, 229, 196, 0.72); }
+.related-pick img { width: 92px; height: 126px; object-fit: cover; }
+.related-pick span { display: grid; align-content: center; gap: 6px; padding: 12px 12px 12px 0; }
+.related-pick small,
+.related-pick em { color: var(--muted); font-size: 12px; font-style: normal; font-weight: 800; }
 
 .skeleton-card {
   min-height: 390px;
@@ -894,6 +979,7 @@ h3 {
 }
 
 .movie-card {
+  position: relative;
   overflow: hidden;
   border-radius: var(--radius);
   transition: transform 180ms ease, border-color 180ms ease;
@@ -1351,6 +1437,27 @@ h3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
   }
+
+  .watch-status-timeline {
+    align-items: stretch;
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .timeline-step {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .timeline-step strong { font-size: 17px; }
+  .timeline-step small { line-height: 1.2; }
+  .timeline-connector { align-self: center; min-width: 5px; }
+  .queue-title { min-width: min(252px, calc(100vw - 56px)); }
+  .related-pick { grid-template-columns: 76px minmax(0, 1fr); }
+  .related-pick img { width: 76px; height: 108px; }
+  .movie-card[data-genre-tone="romance"] .movie-title { font-size: 15px; }
+  .movie-card[data-genre-tone="future"] .movie-title { font-size: 12px; }
 
   .movie-card-body {
     padding: 10px;
