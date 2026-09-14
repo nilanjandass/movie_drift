@@ -276,6 +276,8 @@ const state = {
   discoveryProviders: {},
   discoveryProviderLoading: new Set(),
   filterHistoryOpen: false,
+  peopleQuery: "",
+  peopleSearchTimer: null,
 };
 
 state.filters.language = state.prefs.language;
@@ -741,7 +743,6 @@ async function fetchMedia(page) {
   if (state.filters.minRating) params.set("vote_average.gte", state.filters.minRating);
   if (state.filters.indiaAvailable) {
     params.set("watch_region", "IN");
-    params.set("with_watch_monetization_types", "flatrate|free|ads|rent|buy");
   }
 
   return cachedFetch(`${TMDB_BASE_URL}/discover/${media.endpoint}?${params}`, `discover:${media.endpoint}:${params}`);
@@ -815,7 +816,9 @@ function renderMovieBatch(movies, target) {
     score.style.setProperty("--score", "0");
     requestAnimationFrame(() => score.style.setProperty("--score", scoreTarget));
     score.querySelector(".score-value").textContent = Number(movie.vote_average || 0).toFixed(1);
-    const availability = availabilityLabel(movie.providers || state.discoveryProviders[watchlistKey(movie)]);
+    const mediaKey = watchlistKey(movie);
+    const hasDiscoveryProviderResult = Object.hasOwn(state.discoveryProviders, mediaKey);
+    const availability = availabilityLabel(movie.providers || state.discoveryProviders[mediaKey], { indiaAvailable: target.id === "movieGrid" && state.filters.indiaAvailable && hasDiscoveryProviderResult });
     if (availability) {
       const ribbon = document.createElement("span");
       ribbon.className = "availability-ribbon";
@@ -975,7 +978,7 @@ function renderDiscoveryRails(movies) {
   target.innerHTML = entries.map(([title, list]) => `
     <div class="program-section">
       <div class="section-heading"><h2>${title}</h2><span>Browse the shelf</span></div>
-      <div class="rail-shell"><button class="rail-arrow rail-arrow-left" type="button" aria-label="Scroll ${title} left">‹</button><div class="film-rail">${list.slice(0, 20).map((movie) => `<button class="rail-movie" type="button" data-rail-route="${mediaRoute(movie)}"><img src="${posterUrl(movie.poster_path, "w342", mediaTitle(movie))}" alt="${escapeHtml(mediaTitle(movie))} poster" loading="lazy" /><span>${escapeHtml(mediaTitle(movie))}</span></button>`).join("")}</div><button class="rail-arrow rail-arrow-right" type="button" aria-label="Scroll ${title} right">›</button></div>
+      <div class="rail-shell"><button class="rail-arrow rail-arrow-left" type="button" aria-label="Scroll ${title} left">‹</button><div class="film-rail">${list.slice(0, 20).map((movie) => `<button class="rail-movie" type="button" data-rail-route="${mediaRoute(movie)}"><img src="${posterUrl(movie.poster_path, "w342", mediaTitle(movie))}" alt="${escapeHtml(mediaTitle(movie))} poster" loading="lazy" /></button>`).join("")}</div><button class="rail-arrow rail-arrow-right" type="button" aria-label="Scroll ${title} right">›</button></div>
     </div>
   `).join("");
   target.querySelectorAll("[data-rail-route]").forEach((button) => button.addEventListener("click", () => { window.location.hash = button.dataset.railRoute; }));
@@ -998,15 +1001,34 @@ async function renderPeopleDiscovery(target) {
 
 async function renderPeoplePage() {
   disconnectObserver();
-  app.innerHTML = `<nav class="media-switch" aria-label="Discover content type"><a href="#/" class="media-switch-link">Discover Movies</a><a href="#/series" class="media-switch-link">Discover Series</a><a href="#/people" class="media-switch-link is-active">Discover People</a></nav><section class="hero-panel people-hero"><div><p class="eyebrow">Cast and creators</p><h1>Discover People</h1><p class="hero-copy">Explore the actors, directors, and filmmakers behind the stories you want to watch next.</p></div></section><section class="program-section" id="peopleDiscoveryPage"><div class="loader">Loading people...</div></section>`;
+  app.innerHTML = `<nav class="media-switch" aria-label="Discover content type"><a href="#/" class="media-switch-link">Discover Movies</a><a href="#/series" class="media-switch-link">Discover Series</a><a href="#/people" class="media-switch-link is-active">Discover People</a></nav><section class="hero-panel people-hero"><div><p class="eyebrow">Cast and creators</p><h1>Discover People</h1><p class="hero-copy">Explore the actors, directors, and filmmakers behind the stories you want to watch next.</p></div></section><section class="search-panel people-search-panel"><label class="field search-field"><span>Search people</span><input id="peopleSearchInput" type="search" placeholder="Search actors, directors, and creators" value="${escapeHtml(state.peopleQuery)}" autocomplete="off" /></label></section><section class="program-section" id="peopleDiscoveryPage"><div class="loader">Loading people...</div></section>`;
   const people = await fetchPopularPeople();
   const target = document.querySelector("#peopleDiscoveryPage");
   if (state.route !== "people-discovery" || !target) return;
-  target.innerHTML = `<div class="section-heading"><h2>Popular people</h2><span>From TMDb</span></div>${renderPeopleRail(people)}`;
+  const renderPeopleResults = (results, query = "") => {
+    target.innerHTML = `<div class="section-heading"><h2>${query ? "People search results" : "Popular people"}</h2><span>${query ? `${results.length} found` : "From TMDb"}</span></div>${renderPeopleGrid(results)}`;
+  };
+  renderPeopleResults(state.peopleQuery ? filterPeopleByName(people, state.peopleQuery) : people, state.peopleQuery);
+
+  const input = document.querySelector("#peopleSearchInput");
+  input?.addEventListener("input", () => {
+    window.clearTimeout(state.peopleSearchTimer);
+    state.peopleSearchTimer = window.setTimeout(async () => {
+      const query = input.value.trim();
+      state.peopleQuery = query;
+      const results = query ? await searchPeople(query, people) : people;
+      if (state.route === "people-discovery" && document.querySelector("#peopleDiscoveryPage") === target) renderPeopleResults(results, query);
+    }, 220);
+  });
 }
 
 function renderPeopleRail(people) {
   return `<div class="people-rail">${people.slice(0, 20).map((person) => `<a class="person-rail-card" href="#/person/${person.id}"><img src="${profileUrl(person.profile_path, person.name)}" alt="" loading="lazy" /><span><strong>${escapeHtml(person.name || "Cast member")}</strong><small>${escapeHtml(person.known_for_department || "Film and television")}</small></span></a>`).join("")}</div>`;
+}
+
+function renderPeopleGrid(people) {
+  if (!people.length) return `<div class="empty-state compact-empty"><p class="muted">No people match that search.</p></div>`;
+  return `<div class="people-grid">${people.map((person) => `<a class="person-grid-card" href="#/person/${person.id}"><img src="${profileUrl(person.profile_path, person.name)}" alt="${escapeHtml(person.name || "Cast member")} profile" loading="lazy" /><span><strong>${escapeHtml(person.name || "Cast member")}</strong><small>${escapeHtml(person.known_for_department || "Film and television")}</small></span></a>`).join("")}</div>`;
 }
 
 async function fetchPopularPeople() {
@@ -1018,6 +1040,18 @@ async function fetchPopularPeople() {
   } catch (error) {
     console.warn("Using fallback people", error);
     return FALLBACK_DISCOVERY_PEOPLE;
+  }
+}
+
+async function searchPeople(query, fallbackPeople = FALLBACK_DISCOVERY_PEOPLE) {
+  if (!state.apiKey) return filterPeopleByName(fallbackPeople, query);
+  try {
+    const params = new URLSearchParams({ api_key: state.apiKey, query, include_adult: "false", page: "1" });
+    const data = await cachedFetch(`${TMDB_BASE_URL}/search/person?${params}`, `people:search:${params}`);
+    return data.results || [];
+  } catch (error) {
+    console.warn("Using fallback people search", error);
+    return filterPeopleByName(fallbackPeople, query);
   }
 }
 
@@ -1246,10 +1280,26 @@ async function fetchMediaDetail(movieId, mediaType = state.mediaType) {
 
   const params = new URLSearchParams({
     api_key: state.apiKey,
-    append_to_response: "credits,videos,watch/providers,recommendations,reviews",
+    append_to_response: "credits,videos,recommendations,reviews",
   });
   const detail = await cachedFetch(`${TMDB_BASE_URL}/${media.endpoint}/${movieId}?${params}`, `detail:${media.endpoint}:${movieId}:${params}`);
-  return { ...detail, media_type: mediaType };
+  const providers = await fetchIndiaProviders(movieId, mediaType);
+  return { ...detail, media_type: mediaType, "watch/providers": { results: { IN: providers } } };
+}
+
+async function fetchIndiaProviders(movieId, mediaType = state.mediaType) {
+  const media = MEDIA_CONFIG[mediaType];
+  if (!state.apiKey) {
+    return mediaType === "tv" ? FALLBACK_SERIES_DETAILS["watch/providers"].results.IN : FALLBACK_DETAILS["watch/providers"].results.IN;
+  }
+  try {
+    const params = new URLSearchParams({ api_key: state.apiKey });
+    const data = await cachedFetch(`${TMDB_BASE_URL}/${media.endpoint}/${movieId}/watch/providers?${params}`, `providers:${media.endpoint}:${movieId}:${params}`);
+    return data.results?.IN || {};
+  } catch (error) {
+    console.warn("India provider data is unavailable", error);
+    return {};
+  }
 }
 
 function fallbackRelatedTitles(movieId, mediaType) {
@@ -1414,8 +1464,7 @@ async function hydrateWatchlistProviders(movies) {
     const key = watchlistKey(movie);
     state.watchlistProviderLoading.add(key);
     try {
-      const detail = await fetchMediaDetail(movie.id, mediaTypeOf(movie));
-      state.watchlistProviders[key] = detail["watch/providers"]?.results?.IN || {};
+      state.watchlistProviders[key] = await fetchIndiaProviders(movie.id, mediaTypeOf(movie));
     } catch (error) {
       console.warn("Watchlist provider data is unavailable", error);
       state.watchlistProviders[key] = {};
@@ -1438,8 +1487,7 @@ async function hydrateDiscoveryProviders(movies) {
     const key = watchlistKey(movie);
     state.discoveryProviderLoading.add(key);
     try {
-      const detail = await fetchMediaDetail(movie.id, mediaTypeOf(movie));
-      state.discoveryProviders[key] = detail["watch/providers"]?.results?.IN || {};
+      state.discoveryProviders[key] = await fetchIndiaProviders(movie.id, mediaTypeOf(movie));
     } catch (error) {
       console.warn("Discovery provider data is unavailable", error);
       state.discoveryProviders[key] = {};
@@ -1449,13 +1497,13 @@ async function hydrateDiscoveryProviders(movies) {
   }));
 
   document.querySelectorAll(".movie-card[data-media-key]").forEach((card) => {
-    const availability = availabilityLabel(state.discoveryProviders[card.dataset.mediaKey]);
+    const availability = availabilityLabel(state.discoveryProviders[card.dataset.mediaKey], { indiaAvailable: state.filters.indiaAvailable });
     const stage = card.querySelector(".poster-stage");
-    if (!availability || !stage || stage.querySelector(".availability-ribbon")) return;
-    const ribbon = document.createElement("span");
+    if (!availability || !stage) return;
+    const ribbon = stage.querySelector(".availability-ribbon") || document.createElement("span");
     ribbon.className = "availability-ribbon";
     ribbon.textContent = `${availability.action} ${availability.provider}`;
-    stage.appendChild(ribbon);
+    if (!ribbon.parentElement) stage.appendChild(ribbon);
   });
 }
 

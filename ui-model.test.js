@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus, discoveryRouteKind } = require("./ui-model.js");
+const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus, discoveryRouteKind, filterPeopleByName } = require("./ui-model.js");
 
 test("featuredMovie chooses the most popular rated release", () => {
   const result = featuredMovie([
@@ -99,6 +99,17 @@ test("availabilityLabel uses India provider priority and keeps its action explic
   assert.deepEqual(availabilityLabel({ rent: [{ provider_name: "Apple TV" }], flatrate: [{ provider_name: "Netflix" }] }), { action: "Stream on", provider: "Netflix" });
   assert.deepEqual(availabilityLabel({ ads: [{ provider_name: "JioHotstar" }] }), { action: "With ads on", provider: "JioHotstar" });
   assert.equal(availabilityLabel({}), null);
+});
+
+test("availabilityLabel uses the theatre fallback only for India discovery without a partner", () => {
+  assert.deepEqual(availabilityLabel({}, { indiaAvailable: true }), { action: "Screening on", provider: "Theaters" });
+  assert.equal(availabilityLabel({}, { indiaAvailable: false }), null);
+});
+
+test("filterPeopleByName matches people regardless of letter case", () => {
+  const people = [{ id: 1, name: "Anika Rao" }, { id: 2, name: "Mira Solenne" }];
+  assert.deepEqual(filterPeopleByName(people, "MIRA").map((person) => person.id), [2]);
+  assert.deepEqual(filterPeopleByName(people, "").map((person) => person.id), [1, 2]);
 });
 
 test("genreTone gives suspense precedence over romance and uses a neutral fallback", () => {

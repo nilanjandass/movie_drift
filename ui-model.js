@@ -75,7 +75,7 @@ function clearWatchlistStatus(watchlist = {}, status) {
   return Object.fromEntries(Object.entries(watchlist).filter(([, item]) => item.status !== status));
 }
 
-function availabilityLabel(providers = {}) {
+function availabilityLabel(providers = {}, { indiaAvailable = false } = {}) {
   const providerTypes = [
     ["flatrate", "Stream on"],
     ["free", "Free on"],
@@ -84,7 +84,14 @@ function availabilityLabel(providers = {}) {
     ["buy", "Buy on"],
   ];
   const [key, action] = providerTypes.find(([type]) => providers[type]?.length) || [];
-  return key ? { action, provider: providers[key][0].provider_name } : null;
+  if (key) return { action, provider: providers[key][0].provider_name };
+  return indiaAvailable ? { action: "Screening on", provider: "Theaters" } : null;
+}
+
+function filterPeopleByName(people = [], query = "") {
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  if (!normalizedQuery) return people;
+  return people.filter((person) => (person.name || "").toLocaleLowerCase().includes(normalizedQuery));
 }
 
 function genreTone(item = {}) {
@@ -121,4 +128,4 @@ function hasIndiaAvailability(movie = {}) {
   return Boolean(providers && [providers.flatrate, providers.free, providers.ads, providers.rent, providers.buy].some((list) => list?.length));
 }
 
-if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, discoveryRouteKind, nextCarouselIndex, swipeDirection, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };
+if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, discoveryRouteKind, nextCarouselIndex, swipeDirection, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, filterPeopleByName, genreTone, clearWatchlistStatus, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };
