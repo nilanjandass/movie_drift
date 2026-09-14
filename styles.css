@@ -1070,11 +1070,6 @@ h3 {
   font-weight: 800;
 }
 
-.availability-ribbon.is-unavailable {
-  border-color: rgba(255, 203, 107, 0.42);
-  color: #ffe4a5;
-}
-
 .watchlist-group-actions { display: inline-flex; align-items: center; gap: 8px; }
 .clear-watchlist-group { min-height: 30px; padding: 0 11px; border-radius: 999px; font-size: 12px; }
 
