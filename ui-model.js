@@ -116,4 +116,8 @@ function hasIndiaAvailability(movie = {}) {
   return Boolean(providers && [providers.flatrate, providers.free, providers.ads, providers.rent, providers.buy].some((list) => list?.length));
 }
 
-if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };
+function detailAppendSections() {
+  return "credits,videos,recommendations,reviews";
+}
+
+if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, detailAppendSections };

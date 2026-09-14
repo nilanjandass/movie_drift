@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus } = require("./ui-model.js");
+const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus, detailAppendSections } = require("./ui-model.js");
 
 test("featuredMovie chooses the most popular rated release", () => {
   const result = featuredMovie([
@@ -119,4 +119,9 @@ test("media helpers normalize movie and TV naming, dates, routes, and watchlist 
 test("hasIndiaAvailability recognises TMDb India provider data", () => {
   assert.equal(hasIndiaAvailability({ "watch/providers": { results: { IN: { flatrate: [{ provider_name: "Netflix" }] } } } }), true);
   assert.equal(hasIndiaAvailability({ "watch/providers": { results: { US: { flatrate: [{ provider_name: "Netflix" }] } } } }), false);
+});
+
+test("detailAppendSections keeps optional provider availability outside the core detail request", () => {
+  assert.equal(detailAppendSections(), "credits,videos,recommendations,reviews");
+  assert.equal(detailAppendSections().includes("watch/providers"), false);
 });

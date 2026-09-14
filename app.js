@@ -965,7 +965,7 @@ function renderDiscoveryRails(movies) {
   target.innerHTML = entries.map(([title, list]) => `
     <div class="program-section">
       <div class="section-heading"><h2>${title}</h2><span>Browse the shelf</span></div>
-      <div class="rail-shell"><button class="rail-arrow rail-arrow-left" type="button" aria-label="Scroll ${title} left">‹</button><div class="film-rail">${list.slice(0, 20).map((movie) => `<button class="rail-movie" type="button" data-rail-route="${mediaRoute(movie)}"><img src="${posterUrl(movie.poster_path, "w342", mediaTitle(movie))}" alt="${escapeHtml(mediaTitle(movie))} poster" loading="lazy" /><span>${escapeHtml(mediaTitle(movie))}</span></button>`).join("")}</div><button class="rail-arrow rail-arrow-right" type="button" aria-label="Scroll ${title} right">›</button></div>
+      <div class="rail-shell"><button class="rail-arrow rail-arrow-left" type="button" aria-label="Scroll ${title} left">‹</button><div class="film-rail">${list.slice(0, 20).map((movie) => `<button class="rail-movie" type="button" data-rail-route="${mediaRoute(movie)}"><img src="${posterUrl(movie.poster_path, "w342", mediaTitle(movie))}" alt="${escapeHtml(mediaTitle(movie))} poster" loading="lazy" /></button>`).join("")}</div><button class="rail-arrow rail-arrow-right" type="button" aria-label="Scroll ${title} right">›</button></div>
     </div>
   `).join("");
   target.querySelectorAll("[data-rail-route]").forEach((button) => button.addEventListener("click", () => { window.location.hash = button.dataset.railRoute; }));
@@ -1223,10 +1223,26 @@ async function fetchMediaDetail(movieId, mediaType = state.mediaType) {
 
   const params = new URLSearchParams({
     api_key: state.apiKey,
-    append_to_response: "credits,videos,watch/providers,recommendations,reviews",
+    append_to_response: detailAppendSections(),
   });
   const detail = await cachedFetch(`${TMDB_BASE_URL}/${media.endpoint}/${movieId}?${params}`, `detail:${media.endpoint}:${movieId}:${params}`);
-  return { ...detail, media_type: mediaType };
+  const providers = await fetchIndiaProviders(movieId, mediaType);
+  return { ...detail, media_type: mediaType, "watch/providers": { results: { IN: providers } } };
+}
+
+async function fetchIndiaProviders(movieId, mediaType = state.mediaType) {
+  const media = MEDIA_CONFIG[mediaType];
+  if (!state.apiKey) {
+    return mediaType === "tv" ? FALLBACK_SERIES_DETAILS["watch/providers"].results.IN : FALLBACK_DETAILS["watch/providers"].results.IN;
+  }
+  try {
+    const params = new URLSearchParams({ api_key: state.apiKey });
+    const data = await cachedFetch(`${TMDB_BASE_URL}/${media.endpoint}/${movieId}/watch/providers?${params}`, `providers:${media.endpoint}:${movieId}:${params}`);
+    return data.results?.IN || {};
+  } catch (error) {
+    console.warn("India provider data is unavailable", error);
+    return {};
+  }
 }
 
 function fallbackRelatedTitles(movieId, mediaType) {
@@ -1391,8 +1407,7 @@ async function hydrateWatchlistProviders(movies) {
     const key = watchlistKey(movie);
     state.watchlistProviderLoading.add(key);
     try {
-      const detail = await fetchMediaDetail(movie.id, mediaTypeOf(movie));
-      state.watchlistProviders[key] = detail["watch/providers"]?.results?.IN || {};
+      state.watchlistProviders[key] = await fetchIndiaProviders(movie.id, mediaTypeOf(movie));
     } catch (error) {
       console.warn("Watchlist provider data is unavailable", error);
       state.watchlistProviders[key] = {};
@@ -1415,8 +1430,7 @@ async function hydrateDiscoveryProviders(movies) {
     const key = watchlistKey(movie);
     state.discoveryProviderLoading.add(key);
     try {
-      const detail = await fetchMediaDetail(movie.id, mediaTypeOf(movie));
-      state.discoveryProviders[key] = detail["watch/providers"]?.results?.IN || {};
+      state.discoveryProviders[key] = await fetchIndiaProviders(movie.id, mediaTypeOf(movie));
     } catch (error) {
       console.warn("Discovery provider data is unavailable", error);
       state.discoveryProviders[key] = {};
