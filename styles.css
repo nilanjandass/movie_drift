@@ -1102,42 +1102,6 @@ h3 {
 .person-rail-card small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .person-rail-card small { color: var(--muted); font-size: 11px; font-weight: 700; }
 
-.people-search-panel { margin-top: 20px; }
-
-.people-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(156px, 1fr));
-  gap: 16px;
-}
-
-.person-grid-card {
-  display: grid;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.13);
-  border-radius: var(--radius);
-  background: rgba(4, 7, 14, 0.34);
-  transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
-}
-
-.person-grid-card:hover,
-.person-grid-card:focus-visible {
-  border-color: rgba(97, 229, 196, 0.72);
-  box-shadow: 0 16px 30px rgba(97, 229, 196, 0.12);
-  transform: translateY(-3px);
-}
-
-.person-grid-card img {
-  width: 100%;
-  aspect-ratio: 1;
-  object-fit: cover;
-  background: linear-gradient(145deg, rgba(97, 229, 196, 0.18), rgba(255, 203, 107, 0.12));
-}
-
-.person-grid-card span { display: grid; gap: 3px; padding: 10px; }
-.person-grid-card strong,
-.person-grid-card small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.person-grid-card small { color: var(--muted); font-size: 11px; font-weight: 700; }
-
 .movie-overview {
   display: -webkit-box;
   min-height: 63px;
