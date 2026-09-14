@@ -741,11 +741,28 @@ async function fetchMedia(page) {
   if (state.filters.fromYear) params.set(`${media.dateFilter}.gte`, `${state.filters.fromYear}-01-01`);
   if (state.filters.toYear) params.set(`${media.dateFilter}.lte`, `${state.filters.toYear}-12-31`);
   if (state.filters.minRating) params.set("vote_average.gte", state.filters.minRating);
-  if (state.filters.indiaAvailable) {
-    params.set("watch_region", "IN");
+  if (!state.filters.indiaAvailable) return cachedFetch(`${TMDB_BASE_URL}/discover/${media.endpoint}?${params}`, `discover:${media.endpoint}:${params}`);
+
+  const streamingParams = new URLSearchParams(params);
+  streamingParams.set("watch_region", "IN");
+  streamingParams.set("with_watch_monetization_types", "flatrate|free|ads|rent|buy");
+
+  if (state.mediaType === "tv") {
+    return cachedFetch(`${TMDB_BASE_URL}/discover/${media.endpoint}?${streamingParams}`, `discover:${media.endpoint}:${streamingParams}`);
   }
 
-  return cachedFetch(`${TMDB_BASE_URL}/discover/${media.endpoint}?${params}`, `discover:${media.endpoint}:${params}`);
+  const theatricalParams = new URLSearchParams(params);
+  theatricalParams.set("region", "IN");
+  theatricalParams.set("with_release_type", "2|3");
+  const [streaming, theatrical] = await Promise.all([
+    cachedFetch(`${TMDB_BASE_URL}/discover/${media.endpoint}?${streamingParams}`, `discover:${media.endpoint}:streaming:${streamingParams}`),
+    cachedFetch(`${TMDB_BASE_URL}/discover/${media.endpoint}?${theatricalParams}`, `discover:${media.endpoint}:theatrical:${theatricalParams}`),
+  ]);
+  return {
+    ...streaming,
+    results: mergeIndiaMovieResults(streaming.results || [], theatrical.results || []),
+    total_pages: Math.max(streaming.total_pages || 1, theatrical.total_pages || 1),
+  };
 }
 
 function filterFallbackMedia(page) {
@@ -807,6 +824,7 @@ function renderMovieBatch(movies, target) {
     poster.alt = `${mediaTitle(movie)} poster`;
     card.dataset.genreTone = genreTone(movie);
     card.dataset.mediaKey = watchlistKey(movie);
+    card.dataset.theatricalAvailable = String(Boolean(movie.india_theatrical));
     card.style.setProperty("--card-backdrop", `url("${posterUrl(movie.backdrop_path || movie.poster_path, "w780", mediaTitle(movie))}")`);
     title.textContent = mediaTitle(movie);
     card.querySelector(".movie-meta").innerHTML = movieMeta(movie);
@@ -817,11 +835,12 @@ function renderMovieBatch(movies, target) {
     requestAnimationFrame(() => score.style.setProperty("--score", scoreTarget));
     score.querySelector(".score-value").textContent = Number(movie.vote_average || 0).toFixed(1);
     const mediaKey = watchlistKey(movie);
-    const hasDiscoveryProviderResult = Object.hasOwn(state.discoveryProviders, mediaKey);
-    const availability = availabilityLabel(movie.providers || state.discoveryProviders[mediaKey], { indiaAvailable: target.id === "movieGrid" && state.filters.indiaAvailable && hasDiscoveryProviderResult });
+    const providerResult = movie.providers ? { providers: movie.providers, status: "ready" } : state.discoveryProviders[mediaKey];
+    const availability = availabilityLabel(providerResult?.providers, { theatricalAvailable: target.id === "movieGrid" && card.dataset.theatricalAvailable === "true", providerStatus: providerResult?.status || "pending" });
     if (availability) {
       const ribbon = document.createElement("span");
       ribbon.className = "availability-ribbon";
+      ribbon.classList.toggle("is-unavailable", Boolean(availability.unavailable));
       ribbon.textContent = `${availability.action} ${availability.provider}`;
       card.querySelector(".poster-stage").appendChild(ribbon);
     }
@@ -1142,7 +1161,7 @@ async function renderDetail(movieId, mediaType = state.mediaType) {
           ${renderCastPanel(cast)}
         </div>
         <aside class="detail-stack">
-          ${renderProvidersPanel(providers)}
+          ${renderProvidersPanel(providers, movie.provider_status)}
           <div class="detail-panel">
             <h2>Metadata</h2>
             <dl class="facts">
@@ -1185,7 +1204,10 @@ function renderTrailerPanel(trailer) {
   `;
 }
 
-function renderProvidersPanel(providers) {
+function renderProvidersPanel(providers, providerStatus = "ready") {
+  if (providerStatus === "error") {
+    return `<div class="detail-panel"><h2>Available in India</h2><p class="muted">India streaming availability could not be loaded. Your title details are still available.</p></div>`;
+  }
   const sections = [
     ["Stream", providers.flatrate],
     ["Rent", providers.rent],
@@ -1275,7 +1297,7 @@ async function fetchMediaDetail(movieId, mediaType = state.mediaType) {
   const fallback = media.collection.find((movie) => movie.id === Number(movieId));
   if (!state.apiKey) {
     if (!fallback) throw new Error("Fallback detail not found");
-    return { ...fallback, media_type: mediaType, genres: FALLBACK_GENRES.filter((genre) => fallback.genre_ids.includes(genre.id)), recommendations: { results: fallbackRelatedTitles(movieId, mediaType) }, reviews: { results: fallbackReviews(fallback) }, ...(mediaType === "tv" ? FALLBACK_SERIES_DETAILS : FALLBACK_DETAILS) };
+    return { ...fallback, media_type: mediaType, provider_status: "ready", genres: FALLBACK_GENRES.filter((genre) => fallback.genre_ids.includes(genre.id)), recommendations: { results: fallbackRelatedTitles(movieId, mediaType) }, reviews: { results: fallbackReviews(fallback) }, ...(mediaType === "tv" ? FALLBACK_SERIES_DETAILS : FALLBACK_DETAILS) };
   }
 
   const params = new URLSearchParams({
@@ -1283,22 +1305,22 @@ async function fetchMediaDetail(movieId, mediaType = state.mediaType) {
     append_to_response: "credits,videos,recommendations,reviews",
   });
   const detail = await cachedFetch(`${TMDB_BASE_URL}/${media.endpoint}/${movieId}?${params}`, `detail:${media.endpoint}:${movieId}:${params}`);
-  const providers = await fetchIndiaProviders(movieId, mediaType);
-  return { ...detail, media_type: mediaType, "watch/providers": { results: { IN: providers } } };
+  const providerResult = await fetchIndiaProviders(movieId, mediaType);
+  return { ...detail, media_type: mediaType, provider_status: providerResult.status, "watch/providers": { results: { IN: providerResult.providers } } };
 }
 
 async function fetchIndiaProviders(movieId, mediaType = state.mediaType) {
   const media = MEDIA_CONFIG[mediaType];
   if (!state.apiKey) {
-    return mediaType === "tv" ? FALLBACK_SERIES_DETAILS["watch/providers"].results.IN : FALLBACK_DETAILS["watch/providers"].results.IN;
+    return { providers: mediaType === "tv" ? FALLBACK_SERIES_DETAILS["watch/providers"].results.IN : FALLBACK_DETAILS["watch/providers"].results.IN, status: "ready" };
   }
   try {
     const params = new URLSearchParams({ api_key: state.apiKey });
     const data = await cachedFetch(`${TMDB_BASE_URL}/${media.endpoint}/${movieId}/watch/providers?${params}`, `providers:${media.endpoint}:${movieId}:${params}`);
-    return data.results?.IN || {};
+    return { providers: data.results?.IN || {}, status: "ready" };
   } catch (error) {
     console.warn("India provider data is unavailable", error);
-    return {};
+    return { providers: {}, status: "error" };
   }
 }
 
@@ -1395,7 +1417,7 @@ function renderWatchlist() {
   const savedKeys = new Set(movies.map((movie) => watchlistKey(movie)));
   const related = relatedPick(movies, [...withMediaType(FALLBACK_MOVIES, "movie"), ...withMediaType(FALLBACK_SERIES, "tv")], savedKeys);
   const relatedSource = movies.find((movie) => watchlistKey(movie) === related?.relatedToKey);
-  const enrichedMovies = movies.map((movie) => ({ ...movie, providers: state.watchlistProviders[watchlistKey(movie)] }));
+  const enrichedMovies = movies.map((movie) => ({ ...movie, providers: state.watchlistProviders[watchlistKey(movie)]?.providers }));
   const enrichedGrouped = WATCH_STATUSES.map(([status, label]) => [status, label, enrichedMovies.filter((movie) => movie.status === status)]);
   app.innerHTML = `
     <section class="hero-panel watchlist-hero">
@@ -1467,7 +1489,7 @@ async function hydrateWatchlistProviders(movies) {
       state.watchlistProviders[key] = await fetchIndiaProviders(movie.id, mediaTypeOf(movie));
     } catch (error) {
       console.warn("Watchlist provider data is unavailable", error);
-      state.watchlistProviders[key] = {};
+      state.watchlistProviders[key] = { providers: {}, status: "error" };
     } finally {
       state.watchlistProviderLoading.delete(key);
     }
@@ -1490,18 +1512,20 @@ async function hydrateDiscoveryProviders(movies) {
       state.discoveryProviders[key] = await fetchIndiaProviders(movie.id, mediaTypeOf(movie));
     } catch (error) {
       console.warn("Discovery provider data is unavailable", error);
-      state.discoveryProviders[key] = {};
+      state.discoveryProviders[key] = { providers: {}, status: "error" };
     } finally {
       state.discoveryProviderLoading.delete(key);
     }
   }));
 
   document.querySelectorAll(".movie-card[data-media-key]").forEach((card) => {
-    const availability = availabilityLabel(state.discoveryProviders[card.dataset.mediaKey], { indiaAvailable: state.filters.indiaAvailable });
+    const providerResult = state.discoveryProviders[card.dataset.mediaKey];
+    const availability = availabilityLabel(providerResult?.providers, { theatricalAvailable: card.dataset.theatricalAvailable === "true", providerStatus: providerResult?.status || "pending" });
     const stage = card.querySelector(".poster-stage");
     if (!availability || !stage) return;
     const ribbon = stage.querySelector(".availability-ribbon") || document.createElement("span");
     ribbon.className = "availability-ribbon";
+    ribbon.classList.toggle("is-unavailable", Boolean(availability.unavailable));
     ribbon.textContent = `${availability.action} ${availability.provider}`;
     if (!ribbon.parentElement) stage.appendChild(ribbon);
   });

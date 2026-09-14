@@ -75,7 +75,7 @@ function clearWatchlistStatus(watchlist = {}, status) {
   return Object.fromEntries(Object.entries(watchlist).filter(([, item]) => item.status !== status));
 }
 
-function availabilityLabel(providers = {}, { indiaAvailable = false } = {}) {
+function availabilityLabel(providers = {}, { theatricalAvailable = false, providerStatus = "ready" } = {}) {
   const providerTypes = [
     ["flatrate", "Stream on"],
     ["free", "Free on"],
@@ -85,13 +85,24 @@ function availabilityLabel(providers = {}, { indiaAvailable = false } = {}) {
   ];
   const [key, action] = providerTypes.find(([type]) => providers[type]?.length) || [];
   if (key) return { action, provider: providers[key][0].provider_name };
-  return indiaAvailable ? { action: "Screening on", provider: "Theaters" } : null;
+  if (providerStatus === "error") return { action: "India availability", provider: "unavailable", unavailable: true };
+  return providerStatus === "ready" && theatricalAvailable ? { action: "Screening on", provider: "Theaters" } : null;
 }
 
 function filterPeopleByName(people = [], query = "") {
   const normalizedQuery = query.trim().toLocaleLowerCase();
   if (!normalizedQuery) return people;
   return people.filter((person) => (person.name || "").toLocaleLowerCase().includes(normalizedQuery));
+}
+
+function mergeIndiaMovieResults(streaming = [], theatrical = []) {
+  const merged = new Map();
+  streaming.forEach((movie) => merged.set(movie.id, { ...movie, india_streaming: true }));
+  theatrical.forEach((movie) => {
+    const existing = merged.get(movie.id);
+    merged.set(movie.id, { ...movie, ...existing, india_theatrical: true });
+  });
+  return [...merged.values()];
 }
 
 function genreTone(item = {}) {
@@ -128,4 +139,4 @@ function hasIndiaAvailability(movie = {}) {
   return Boolean(providers && [providers.flatrate, providers.free, providers.ads, providers.rent, providers.buy].some((list) => list?.length));
 }
 
-if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, discoveryRouteKind, nextCarouselIndex, swipeDirection, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, filterPeopleByName, genreTone, clearWatchlistStatus, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };
+if (typeof module !== "undefined") module.exports = { featuredMovie, moodLabels, shouldRenderFeatured, discoveryRouteKind, nextCarouselIndex, swipeDirection, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, filterPeopleByName, mergeIndiaMovieResults, genreTone, clearWatchlistStatus, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability };

@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 
-const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus, discoveryRouteKind, filterPeopleByName } = require("./ui-model.js");
+const { featuredMovie, moodLabels, shouldRenderFeatured, nextCarouselIndex, swipeDirection, mediaTypeOf, mediaTitle, mediaDate, mediaRoute, watchlistKey, hasIndiaAvailability, shouldApplyRevealCard, watchlistQueue, relatedPick, availabilityLabel, genreTone, clearWatchlistStatus, discoveryRouteKind, filterPeopleByName, mergeIndiaMovieResults } = require("./ui-model.js");
 
 test("featuredMovie chooses the most popular rated release", () => {
   const result = featuredMovie([
@@ -101,9 +101,22 @@ test("availabilityLabel uses India provider priority and keeps its action explic
   assert.equal(availabilityLabel({}), null);
 });
 
-test("availabilityLabel uses the theatre fallback only for India discovery without a partner", () => {
-  assert.deepEqual(availabilityLabel({}, { indiaAvailable: true }), { action: "Screening on", provider: "Theaters" });
-  assert.equal(availabilityLabel({}, { indiaAvailable: false }), null);
+test("availabilityLabel shows theatres only for a confirmed theatrical India release", () => {
+  assert.deepEqual(availabilityLabel({}, { theatricalAvailable: true, providerStatus: "ready" }), { action: "Screening on", provider: "Theaters" });
+  assert.equal(availabilityLabel({}, { theatricalAvailable: false, providerStatus: "ready" }), null);
+});
+
+test("availabilityLabel does not disguise a provider request failure as a theatre release", () => {
+  assert.deepEqual(availabilityLabel({}, { theatricalAvailable: true, providerStatus: "error" }), { action: "India availability", provider: "unavailable", unavailable: true });
+});
+
+test("mergeIndiaMovieResults preserves both digital and theatrical availability", () => {
+  const result = mergeIndiaMovieResults([{ id: 1, title: "Digital" }, { id: 2, title: "Both" }], [{ id: 2, title: "Both" }, { id: 3, title: "Theatre" }]);
+  assert.deepEqual(result.map(({ id, india_streaming, india_theatrical }) => ({ id, india_streaming, india_theatrical })), [
+    { id: 1, india_streaming: true, india_theatrical: undefined },
+    { id: 2, india_streaming: true, india_theatrical: true },
+    { id: 3, india_streaming: undefined, india_theatrical: true },
+  ]);
 });
 
 test("filterPeopleByName matches people regardless of letter case", () => {
